@@ -1,0 +1,30 @@
+{
+  "categories": [
+    {
+      "title": "Shipping & Delivery",
+      "items": [
+        {
+          "question": "How quickly do you ship orders?",
+          "answer": "Orders are typically fulfilled within 24 hours of payment confirmation and shipped via USPS. Orders placed on weekends or holidays will be processed on the next business day."
+        },
+        {
+          "question": "What should I do if my package hasn’t moved?",
+          "answer": "If your tracking hasn’t updated in 2 business days:\n1. Check the tracking number via USPS Tracking.\n2. Email us at info@example.com with your order number and tracking information.\n3. You may also call USPS to file a claim if necessary.\n\nWe will review your case and reship your package if USPS shows no movement within 2 business days."
+        },
+        {
+          "question": "Do you ship internationally?",
+          "answer": "Yes—some countries are available now. If you don’t see your country at checkout, please email us with your full mailing information, including:\n• Name\n• Address\n• Phone number\n• Email address\n\nWe will check the cost and add your country to the website if possible."
+        }
+      ]
+    },
+    {
+      "title": "Payment & Order Processing",
+      "items": [
+        {
+          "question": "What payment methods do you accept?",
+          "answer": "We accept:\n• Credit/Debit Cards\n• Example Wallet: @YourHandle\n\nPlease note: Due to the nature of our industry, processors may change."
+        }
+      ]
+    }
+  ]
+}

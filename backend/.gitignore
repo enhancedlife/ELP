@@ -1,0 +1,5 @@
+.env
+.env.local
+*.pem
+.venv/
+data_migration_export.json

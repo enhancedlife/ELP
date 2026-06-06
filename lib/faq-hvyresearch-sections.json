@@ -1,0 +1,85 @@
+{
+  "categories": [
+    {
+      "title": "Shipping & Delivery",
+      "items": [
+        {
+          "question": "How quickly do you ship orders?",
+          "answer": "Orders are typically fulfilled within 24 hours of payment confirmation and shipped via\nUSPS. Orders placed on weekends or holidays will be processed on the next business day."
+        },
+        {
+          "question": "What should I do if my package hasn’t moved?",
+          "answer": "If your tracking hasn’t updated in 2 business days:\n1. Check the tracking number via USPS Tracking.\n2. Email us at info@hvyresearch.com with your order number and tracking information.\n3. You may also call USPS to file a claim if necessary.\n\nWe will review your case and reship your package if USPS shows no movement within 2 business days."
+        },
+        {
+          "question": "What happens if my package is lost?",
+          "answer": "If your package is confirmed lost by USPS:\n• Open a claim with USPS: USPS Claims\n• Forward us the claim confirmation and reference number.\n• Once verified, we will issue a replacement or an appropriate resolution.\n\nPlease allow up to 3 business days for USPS to provide a resolution. If no resolution is given within that time, we will proceed with reshipping your order."
+        },
+        {
+          "question": "Do you ship internationally?",
+          "answer": "Yes—some countries are available now. If you don’t see your country at checkout, please email us with your full mailing information, including:\n• Name\n• Address\n• Phone number\n• Email address\n\nWe will check the cost and add your country to the website if possible."
+        },
+        {
+          "question": "Are there tariffs or fees to get my package?",
+          "answer": "• We are not responsible for any additional customs fees, import duties, or tariffs. These are due by the recipient.\n• We are not up to date on international fees or regulations. Please know what these are for your country before ordering."
+        },
+        {
+          "question": "What if my package is returned to sender?",
+          "answer": "If a package is returned to us, you will be responsible for the cost of shipping it again after it is received back at our facility."
+        },
+        {
+          "question": "Do you accept returns?",
+          "answer": "Due to the nature of the products we sell, we are unable to accept returns or refunds. Please review all product details carefully before placing your order. If you have any questions, feel free to reach out to us before purchasing."
+        }
+      ]
+    },
+    {
+      "title": "Payment & Order Processing",
+      "items": [
+        {
+          "question": "What payment methods do you accept?",
+          "answer": "We accept:\n• Credit/Debit Cards with timewise.\n• Venmo: @ResearchHVY\n• Cash App: $ResearchHVY\n• Zelle: 845-500-8651, hvyresearch@gmail.com, or info@hvyresearch.com\n\nPlease note: PayPal is no longer available.\nDue to the nature of our industry, we regularly change credit card processors."
+        },
+        {
+          "question": "I sent payment—how do I know it was received?",
+          "answer": "Once your payment is confirmed, you will receive an email confirmation. Your order will then be processed and shipped within 24 hours (excluding weekends and holidays).\n\nIf you don’t receive a confirmation email within 12 hours, please contact us at info@hvyresearch.com."
+        }
+      ]
+    },
+    {
+      "title": "Product Use & Disclaimer",
+      "items": [
+        {
+          "question": "Are these products safe for human consumption?",
+          "answer": "No. All products sold are for laboratory research use only. They are not intended for human or animal consumption, medical use, or diagnostic purposes.\n\n  Important: If you contact us regarding human use of any kind, you will immediately be banned from purchasing anything from our website."
+        }
+      ]
+    },
+    {
+      "title": "Common Questions",
+      "items": [
+        {
+          "question": "Can I update or cancel my order?",
+          "answer": "We cannot change orders once they are placed, including items or shipping addresses. Please be sure all information is correct before submitting your order."
+        },
+        {
+          "question": "I received part of my order—where’s the rest?",
+          "answer": "Orders may be shipped in multiple packages. Please check your email for additional tracking numbers or contact us if you didn’t receive them."
+        }
+      ]
+    },
+    {
+      "title": "Order Tracking & Confirmation",
+      "items": [
+        {
+          "question": "How do I track my order?",
+          "answer": "Once your order ships, you’ll receive an email with your USPS tracking number and a link to track it. You can also visit our Order Tracking page on our website."
+        },
+        {
+          "question": "What email will I receive after purchasing?",
+          "answer": "You will receive:\n1. An Order Confirmation Email with your order summary and payment instructions.\n2. A Shipping Confirmation Email with tracking information once your package ships.\n\nIf you don’t see these emails, please check your spam/junk folder."
+        }
+      ]
+    }
+  ]
+}

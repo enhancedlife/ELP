@@ -1,0 +1,13 @@
+# Stay on 5.0.x for MariaDB 10.4 (e.g. XAMPP). Django 5.2+ requires MariaDB 10.5+.
+# On Python 3.14, theswolerepublic.py314_context_fix patches template BaseContext.__copy__.
+Django>=5.0,<5.1
+djangorestframework>=3.14,<4
+django-cors-headers>=4.3,<5
+djangorestframework-simplejwt>=5.3,<6
+PyMySQL>=1.1,<2
+# Required when MySQL user auth is caching_sha2_password (default on MySQL 8+).
+cryptography>=42.0,<45
+gunicorn>=22.0,<24
+python-dotenv>=1.0,<2
+passlib>=1.7,<2
+bcrypt>=4.0,<5

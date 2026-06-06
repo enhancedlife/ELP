@@ -1,0 +1,71 @@
+from django.urls import path
+
+from mailing import dashboard_views as mailing_dashboard_views
+
+from blog import dashboard_views as blog_dashboard_views
+from . import views
+
+urlpatterns = [
+    path("overview", views.overview),
+    path("analytics", views.analytics),
+    path("users/<int:pk>", views.user_detail),
+    path("users", views.users_collection),
+    path("projects", views.projects_list),
+    path("landing-pages/<int:pk>", views.landing_page_detail),
+    path("landing-pages", views.landing_pages_collection),
+    path("blog-posts/<int:pk>", blog_dashboard_views.blog_post_detail),
+    path("blog-posts", blog_dashboard_views.blog_posts_collection),
+    path("sponsors/<int:pk>", views.sponsor_detail),
+    path("sponsors", views.sponsors_collection),
+    path("partners-page", views.partners_page_settings),
+    path("notifications/<int:pk>", views.notification_detail),
+    path("notifications", views.notifications_collection),
+    path("notification-preferences", views.notification_preferences),
+    path(
+        "messages/<int:pk>/items/<int:msg_id>",
+        views.conversation_message_detail,
+    ),
+    path("messages/<int:pk>", views.conversation_detail),
+    path("messages", views.messages_inbox),
+    path("calendar", views.calendar_placeholder),
+    path(
+        "email/broadcasts/<int:pk>/recipients",
+        mailing_dashboard_views.email_broadcast_recipients,
+    ),
+    path(
+        "email/broadcasts/<int:pk>/process",
+        mailing_dashboard_views.email_broadcast_process,
+    ),
+    path(
+        "email/broadcasts/<int:pk>/pause",
+        mailing_dashboard_views.email_broadcast_pause,
+    ),
+    path(
+        "email/broadcasts/<int:pk>/resume",
+        mailing_dashboard_views.email_broadcast_resume,
+    ),
+    path(
+        "email/broadcasts/<int:pk>/stop",
+        mailing_dashboard_views.email_broadcast_stop,
+    ),
+    path(
+        "email/broadcasts/<int:pk>/send",
+        mailing_dashboard_views.email_broadcast_send,
+    ),
+    path(
+        "email/broadcasts/<int:pk>",
+        mailing_dashboard_views.email_broadcast_detail,
+    ),
+    path(
+        "email/template/test-send",
+        mailing_dashboard_views.system_email_layout_test_send,
+    ),
+    path("email/send-logs", mailing_dashboard_views.email_send_logs_collection),
+    path("email/template", mailing_dashboard_views.system_email_layout),
+    path("email/broadcasts", mailing_dashboard_views.email_broadcasts_collection),
+    path(
+        "email/subscribers/<int:pk>",
+        mailing_dashboard_views.newsletter_subscriber_detail,
+    ),
+    path("email/subscribers", mailing_dashboard_views.newsletter_subscribers_collection),
+]

@@ -1,0 +1,61 @@
+{
+  "categories": [
+    {
+      "title": "Aquila Anabolics",
+      "items": [
+        {
+          "question": "Is there a minimum order?",
+          "answer": "No, there is no minimum order. You can order as little as 1 item."
+        },
+        {
+          "question": "How much is shipping?",
+          "answer": "USPS Priority is $20. USPS Express is $45. Same Day Express is $70 - orders placed by 12:00pm Eastern ship same day via USPS Express."
+        },
+        {
+          "question": "What payment methods do you accept?",
+          "answer": "We accept Bitcoin and Monero."
+        },
+        {
+          "question": "Where do you ship your products?",
+          "answer": "We ship to all states in the continental US. International shipping not yet supported."
+        },
+        {
+          "question": "How long does it take to process an order?",
+          "answer": "We ship Monday through Friday. Orders are shipped in the order which they are received. Orders will ship within 2 business days. In the event of increased order volumes, orders can take longer to process."
+        },
+        {
+          "question": "Testing Policy",
+          "answer": "We test all of our products through accredited third-party laboratories, typically Janoshik. We will reimburse you for independent testing only if the product's existing test is older than six months and the new test is conducted through a certified laboratory. Home testing kits (e.g., RoidTest) are not eligible for reimbursement. When submitting a test, you must list Aquila Anabolics as the manufacturer and include the correct batch number displayed on the product. Additionally, clear photos of the vials being tested are required."
+        },
+        {
+          "question": "I selected the wrong payment method. What do I do?",
+          "answer": "There is no need to open a support ticket. Simply open a new order and select the correct payment method and proceed."
+        },
+        {
+          "question": "Can I change my order after I placed it?",
+          "answer": "No, orders cannot be modified once placed. Please carefully review all details before completing your purchase. We are unable to accommodate order changes or corrections after submission."
+        },
+        {
+          "question": "What information do you need for shipping?",
+          "answer": "We require your complete legal name (first and last name - no initials or abbreviations). Packages will not be shipped if initials are used instead of full names. Additionally, please use your real name only. Using fake names or aliases may result in order cancellation as it raises security concerns."
+        },
+        {
+          "question": "My order says delivered, but I don't have it",
+          "answer": "We are not responsible for packages marked as delivered by USPS. Once tracking shows delivery, the package is considered successfully delivered. Please contact your local USPS office to investigate the delivery status and location of your package."
+        },
+        {
+          "question": "My order was returned to sender",
+          "answer": "We do not accept returned packages and will not process reshipping for orders that are returned to sender. Please ensure your shipping address is accurate and complete when placing your order."
+        },
+        {
+          "question": "My package was lost",
+          "answer": "If your package is confirmed lost by USPS, we will reship your order free of charge one time as a courtesy. This one-time reship policy applies per customer account."
+        },
+        {
+          "question": "Will I get tracking?",
+          "answer": "Yes, tracking information is provided for all orders. We recommend signing up for USPS Informed Delivery to receive automatic updates and notifications about your package's delivery status."
+        }
+      ]
+    }
+  ]
+}
