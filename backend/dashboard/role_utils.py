@@ -28,6 +28,21 @@ def request_is_manager(request: Request) -> bool:
     return is_dashboard_manager(getattr(request, "user", None))
 
 
+def require_superuser(request: Request) -> Response | None:
+    user = getattr(request, "user", None)
+    if user is None or not getattr(user, "is_authenticated", False):
+        return Response(
+            {"detail": "Authentication required."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    if not bool(getattr(user, "is_superuser", False)):
+        return Response(
+            {"detail": "Only superuser accounts can perform this action."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return None
+
+
 def require_full_admin(request: Request) -> Response | None:
     """For managers, block entire endpoint; server-secret / unauthenticated BFF is allowed."""
     if not request.user.is_authenticated:

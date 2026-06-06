@@ -249,6 +249,25 @@ export type DashboardEmailBroadcastsResponse = {
 	broadcasts: DashboardEmailBroadcast[];
 };
 
+export type DashboardDatabaseBackupInfo = {
+	engine: "mysql" | "sqlite" | "other";
+	database_name: string;
+	host: string;
+	can_export: boolean;
+	can_import: boolean;
+	export_format: string;
+	tools: Record<string, boolean>;
+	max_import_mb: number;
+};
+
+export type DashboardDatabaseImportResult = {
+	ok: boolean;
+	engine: string;
+	database_name: string;
+	bytes_restored: number;
+	previous_saved_to?: string | null;
+};
+
 export type DashboardOutboundEmailSource =
 	| "broadcast"
 	| "template_test"

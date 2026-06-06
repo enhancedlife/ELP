@@ -4,6 +4,7 @@ from mailing import dashboard_views as mailing_dashboard_views
 
 from blog import dashboard_views as blog_dashboard_views
 from . import views
+from . import db_backup_views
 
 urlpatterns = [
     path("overview", views.overview),
@@ -28,6 +29,9 @@ urlpatterns = [
     path("messages/<int:pk>", views.conversation_detail),
     path("messages", views.messages_inbox),
     path("calendar", views.calendar_placeholder),
+    path("database/backup/export", db_backup_views.database_backup_export_view),
+    path("database/backup/import", db_backup_views.database_backup_import_view),
+    path("database/backup", db_backup_views.database_backup_info_view),
     path(
         "email/broadcasts/<int:pk>/recipients",
         mailing_dashboard_views.email_broadcast_recipients,

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-/** Node on Windows often resolves `localhost` to ::1 while Django binds 127.0.0.1 — force IPv4 loopback. */
+/** Node on Windows often resolves `localhost` to ::1 while Django binds 127.0.0.1 only — force IPv4 loopback. */
 function backendBase(): string {
 	const raw =
 		process.env.BACKEND_URL ||
@@ -15,7 +15,7 @@ function backendBase(): string {
 
 export const dynamic = "force-dynamic";
 
-function buildUpstreamHeaders(request: Request): HeadersInit {
+function buildUpstreamHeaders(request: Request): Record<string, string> {
 	const secret = (process.env.DASHBOARD_SERVER_SECRET || "").trim();
 	const headers: Record<string, string> = { Accept: "application/json" };
 	if (secret) {
@@ -26,8 +26,11 @@ function buildUpstreamHeaders(request: Request): HeadersInit {
 		headers.Authorization = auth;
 	}
 	const contentType = request.headers.get("Content-Type");
-	if (contentType?.toLowerCase().includes("application/json")) {
-		headers["Content-Type"] = "application/json";
+	if (contentType) {
+		const lower = contentType.toLowerCase();
+		if (lower.includes("multipart/form-data") || lower.includes("application/json")) {
+			headers["Content-Type"] = contentType;
+		}
 	}
 	return headers;
 }
@@ -43,20 +46,47 @@ async function forwardDashboard(
 	const url = `${base}/api/dashboard/${suffix}`;
 	const method = request.method.toUpperCase();
 	const hasBody = !["GET", "HEAD"].includes(method);
-	const body = hasBody ? await request.text() : undefined;
+	const requestContentType = request.headers.get("Content-Type") || "";
+	const isMultipart = requestContentType.toLowerCase().includes("multipart/form-data");
+	const isHeavy = suffix.startsWith("database/backup");
+
+	let body: BodyInit | undefined;
+	if (hasBody) {
+		if (isMultipart) {
+			body = await request.arrayBuffer();
+		} else {
+			const text = await request.text();
+			body = text.length > 0 ? text : undefined;
+		}
+	}
 
 	try {
 		const res = await fetch(url, {
 			method,
 			headers: buildUpstreamHeaders(request),
-			body: hasBody && body && body.length > 0 ? body : undefined,
+			body,
 			cache: "no-store",
-			signal: AbortSignal.timeout(25_000),
+			signal: AbortSignal.timeout(isHeavy ? 600_000 : 25_000),
 		});
 
-		const text = await res.text();
 		const ct = res.headers.get("Content-Type") || "application/json";
+		const cd = res.headers.get("Content-Disposition") || "";
+		const isDownload =
+			cd.includes("attachment") ||
+			ct.includes("octet-stream") ||
+			ct.includes("application/gzip") ||
+			ct.includes("application/x-gzip");
 
+		if (isDownload) {
+			const buf = await res.arrayBuffer();
+			const outHeaders: Record<string, string> = { "Content-Type": ct };
+			if (cd) outHeaders["Content-Disposition"] = cd;
+			const len = res.headers.get("Content-Length");
+			if (len) outHeaders["Content-Length"] = len;
+			return new NextResponse(buf, { status: res.status, headers: outHeaders });
+		}
+
+		const text = await res.text();
 		return new NextResponse(text, {
 			status: res.status,
 			headers: { "Content-Type": ct },

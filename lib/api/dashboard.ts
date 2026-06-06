@@ -9,6 +9,8 @@ import type {
 	DashboardBlogPostsResponse,
 	DashboardCalendarResponse,
 	DashboardConversationDetailResponse,
+	DashboardDatabaseBackupInfo,
+	DashboardDatabaseImportResult,
 	DashboardEmailBroadcast,
 	DashboardEmailBroadcastRecipient,
 	DashboardEmailBroadcastRecipientsResponse,
@@ -584,4 +586,88 @@ export function patchDashboardUser(
 
 export function deleteDashboardUser(id: number) {
 	return mutateDashboardJson<null>("DELETE", `users/${id}`);
+}
+
+export function getDashboardDatabaseBackupInfo() {
+	return fetchDashboardJson<DashboardDatabaseBackupInfo>("database/backup");
+}
+
+function parseContentDispositionFilename(header: string | null): string | null {
+	if (!header) return null;
+	const match = /filename\*?=(?:UTF-8''|")?([^";\n]+)/i.exec(header);
+	return match?.[1]?.replace(/"/g, "").trim() || null;
+}
+
+export async function exportDashboardDatabaseBackup(): Promise<{
+	ok: boolean;
+	errorMessage?: string;
+}> {
+	try {
+		const res = await fetch(dashboardClientFetchUrl("database/backup/export"), {
+			method: "POST",
+			headers: dashboardAuthHeaders(),
+			cache: "no-store",
+		});
+		if (!res.ok) {
+			const text = await res.text();
+			return {
+				ok: false,
+				errorMessage: parseDashboardApiErrorText(text) || `HTTP ${res.status}`,
+			};
+		}
+		const blob = await res.blob();
+		const filename =
+			parseContentDispositionFilename(res.headers.get("Content-Disposition")) ||
+			"database_backup.sql.gz";
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = filename;
+		a.click();
+		URL.revokeObjectURL(url);
+		return { ok: true };
+	} catch {
+		return {
+			ok: false,
+			errorMessage: "Network error — could not export database backup.",
+		};
+	}
+}
+
+export async function importDashboardDatabaseBackup(
+	file: File,
+): Promise<DashboardJsonResult<DashboardDatabaseImportResult>> {
+	try {
+		const form = new FormData();
+		form.append("file", file);
+		form.append("confirm", "REPLACE");
+		const res = await fetch(dashboardClientFetchUrl("database/backup/import"), {
+			method: "POST",
+			headers: dashboardAuthHeaders(),
+			body: form,
+			cache: "no-store",
+		});
+		const text = await res.text();
+		if (!res.ok) {
+			return {
+				ok: false,
+				data: null,
+				status: res.status,
+				errorMessage: parseDashboardApiErrorText(text),
+			};
+		}
+		return {
+			ok: true,
+			data: text ? (JSON.parse(text) as DashboardDatabaseImportResult) : null,
+			status: res.status,
+			errorMessage: null,
+		};
+	} catch {
+		return {
+			ok: false,
+			data: null,
+			status: null,
+			errorMessage: "Network error — could not import database backup.",
+		};
+	}
 }

@@ -1,0 +1,93 @@
+# All services run on the internal Docker network. Database is ONLY the `db` container
+# (no host MySQL, no published DB port).
+#
+# TLS (nginx container):
+#   sudo certbot certonly --webroot -w /var/www/certbot \
+#     -d yourenhancedlife.com -d www.yourenhancedlife.com
+#
+# Copy .env.deploy.example → .env before: docker compose up -d --build
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${DB_NAME:-theswolerepublic}
+      MYSQL_USER: ${DB_USER:?set DB_USER in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - yel_mysql_data:/var/lib/mysql
+    # No ports published — reachable only as hostname `db` inside Compose network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DJANGO_DEBUG: "0"
+      DB_HOST: db
+      DB_PORT: "3306"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BACKEND_URL: http://backend:8000
+        NEXT_PUBLIC_BACKEND_URL: ${PUBLIC_SITE_URL:?set PUBLIC_SITE_URL in .env}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BACKEND_URL: http://backend:8000
+      API_REWRITE_TARGET: http://backend:8000
+      PUBLIC_SITE_BASE_URL: ${PUBLIC_SITE_URL:?set PUBLIC_SITE_URL in .env}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  nginx:
+    build:
+      context: .
+      dockerfile: deploy/nginx.Dockerfile
+    image: yel-nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.docker.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/maintenance:/var/maintenance:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  yel_mysql_data:
