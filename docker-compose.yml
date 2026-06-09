@@ -12,8 +12,9 @@ services:
     image: mariadb:11
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
-      MYSQL_DATABASE: ${DB_NAME:-theswolerepublic}
+      # Root password: set MYSQL_ROOT_PASSWORD in .env, or it defaults to DB_PASSWORD
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-${DB_PASSWORD:?set DB_PASSWORD in .env}}
+      MYSQL_DATABASE: ${DB_NAME:-ELP}
       MYSQL_USER: ${DB_USER:?set DB_USER in .env}
       MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     volumes:

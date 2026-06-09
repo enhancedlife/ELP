@@ -274,7 +274,7 @@ EMAIL_HOST_PASSWORD = (os.environ.get("EMAIL_HOST_PASSWORD") or "").strip()
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "0") == "1"
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "30"))
-DEFAULT_FROM_EMAIL = (os.environ.get("DEFAULT_FROM_EMAIL") or "noreply@theswolerepublic.com").strip()
+DEFAULT_FROM_EMAIL = (os.environ.get("DEFAULT_FROM_EMAIL") or "admin@yourenhancedlife.com").strip()
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # Inbox for website contact form submissions (see mailing.contact_views).
 CONTACT_FORM_TO = (os.environ.get("CONTACT_FORM_TO") or "").strip()

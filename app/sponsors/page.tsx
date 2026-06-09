@@ -44,7 +44,7 @@ export default function SponsorsPage() {
             <div className="mt-8 p-6 bg-black/50 rounded-xl border border-orange-500/30">
               <p className="text-sm uppercase text-gray-500">Exclusive Community Code</p>
               <p className="text-3xl font-bold text-orange-400 mt-1">GREATLIFE50</p>
-              <p className="text-gray-400 mt-2">Use this code for a discount on your order</p>
+              <p className="text-gray-400 mt-2">Save $50 on your order (one-time use per customer)</p>
             </div>
 
             <a

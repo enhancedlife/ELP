@@ -13,6 +13,7 @@ import { changePasswordRequest, updateProfileRequest } from "@/lib/auth"
 type ProfileForm = {
   first_name: string
   last_name: string
+  email: string
 }
 
 type PasswordForm = {
@@ -28,7 +29,7 @@ function joinName(first: string, last: string) {
 export default function ProfilePage() {
   const { user, refresh } = usePortalAuth()
   const profileForm = useForm<ProfileForm>({
-    defaultValues: { first_name: "", last_name: "" },
+    defaultValues: { first_name: "", last_name: "", email: "" },
   })
   const passwordForm = useForm<PasswordForm>({
     defaultValues: {
@@ -43,6 +44,7 @@ export default function ProfilePage() {
     profileForm.reset({
       first_name: user.first_name ?? "",
       last_name: user.last_name ?? "",
+      email: user.email ?? "",
     })
   }, [user, profileForm])
 
@@ -52,7 +54,10 @@ export default function ProfilePage() {
 
   async function onProfileSubmit(values: ProfileForm) {
     try {
-      await updateProfileRequest({ name: joinName(values.first_name, values.last_name) })
+      await updateProfileRequest({
+        name: joinName(values.first_name, values.last_name),
+        email: values.email.trim().toLowerCase(),
+      })
       await refresh()
       toast.success("Profile updated")
     } catch (e) {
@@ -82,14 +87,33 @@ export default function ProfilePage() {
             ← Back to portal
           </Link>
           <h1 className="text-3xl font-heading font-bold uppercase tracking-wide mt-4">Profile</h1>
-          <p className="text-gray-400 mt-2">{user?.email}</p>
+          <p className="text-gray-400 mt-2">Update your account details below.</p>
         </div>
 
         <form
           onSubmit={profileForm.handleSubmit(onProfileSubmit)}
           className="bg-black/30 backdrop-blur-sm rounded-2xl p-8 border border-white/10 space-y-4"
         >
-          <h2 className="text-lg font-semibold">Display name</h2>
+          <h2 className="text-lg font-semibold">Account details</h2>
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-gray-300">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              {...profileForm.register("email", {
+                required: "Email is required",
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: "Enter a valid email address",
+                },
+              })}
+              className="bg-black/50 border-white/20 text-white"
+            />
+            {profileForm.formState.errors.email && (
+              <p className="text-sm text-red-400">{profileForm.formState.errors.email.message}</p>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="first_name" className="text-gray-300">First name</Label>

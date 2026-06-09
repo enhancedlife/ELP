@@ -2,15 +2,7 @@
 
 import Link from "next/link"
 import { useState, useRef, useEffect } from "react"
-
-const resources = [
-  { title: "Peptide Calculator", href: "/resources/peptide-calculator" },
-  { title: "Reconstitution Guide", href: "/resources/reconstitution-guide" },
-  { title: "Injection Guide", href: "/resources/injection-guide" },
-  { title: "Bloodwork Guide", href: "/resources/bloodwork-guide" },
-  { title: "Beginner TRT Guide", href: "/resources/beginner-trt-guide" },
-  { title: "Fat Loss Protocols", href: "/resources/fat-loss-protocols" },
-]
+import { RESOURCES_HUB_HREF, SITE_RESOURCES } from "@/lib/site-nav"
 
 export function ResourcesDropdown() {
   const [isOpen, setIsOpen] = useState(false)
@@ -33,22 +25,22 @@ export function ResourcesDropdown() {
   }, [])
 
   return (
-    <div 
+    <div
       className="relative"
       ref={dropdownRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Link 
-        href="/resources"
-        className="flex items-center gap-1 text-gray-300 hover:text-white transition font-medium"
+      <Link
+        href={RESOURCES_HUB_HREF}
+        className="flex items-center gap-1 font-medium text-gray-300 transition hover:text-white"
       >
         Resources
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-          fill="none" 
-          viewBox="0 0 24 24" 
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
           stroke="currentColor"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -56,22 +48,22 @@ export function ResourcesDropdown() {
       </Link>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-56 bg-[#1a1d24] border border-white/10 rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute top-full left-0 mt-2 w-56 overflow-hidden rounded-lg border border-white/10 bg-[#1a1d24] shadow-xl">
           <div className="py-2">
-            {resources.map((resource) => (
+            {SITE_RESOURCES.map((resource) => (
               <Link
                 key={resource.href}
                 href={resource.href}
-                className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-green-600/20 hover:text-green-400 transition"
+                className="block px-4 py-2.5 text-sm text-gray-300 transition hover:bg-green-600/20 hover:text-green-400"
                 onClick={() => setIsOpen(false)}
               >
                 {resource.title}
               </Link>
             ))}
-            <div className="border-t border-white/10 mt-2 pt-2">
+            <div className="mt-2 border-t border-white/10 pt-2">
               <Link
-                href="/resources"
-                className="block px-4 py-2.5 text-sm text-green-400 hover:bg-green-600/20 transition font-medium"
+                href={RESOURCES_HUB_HREF}
+                className="block px-4 py-2.5 text-sm font-medium text-green-400 transition hover:bg-green-600/20"
                 onClick={() => setIsOpen(false)}
               >
                 View All Resources →

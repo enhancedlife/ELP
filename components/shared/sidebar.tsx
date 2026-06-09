@@ -24,6 +24,7 @@ import {
 	HelpCircle,
 	LogIn,
 	AlertCircle,
+	Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDashboardAuth } from "@/components/providers/dashboard-auth-provider";
@@ -192,12 +193,12 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
 	return (
 		<div
 			className={cn(
-				"flex h-full flex-col border-r bg-card shadow-sm transition-all duration-300",
+				"flex h-full min-h-0 shrink-0 flex-col border-r bg-card shadow-sm transition-all duration-300",
 				isCollapsed ? "w-16" : "w-72",
 			)}
 		>
 			{/* Logo */}
-			<div className="flex h-16 items-center border-b px-6 justify-between">
+			<div className="flex h-16 shrink-0 items-center justify-between border-b px-6">
 				{!isCollapsed && (
 					<Link href="/dashboard" className="flex items-center gap-3 group">
 						<div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -228,7 +229,7 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
 			</div>
 
 			{/* Navigation Groups */}
-			<nav className="flex-1 space-y-8 p-6">
+			<nav className="min-h-0 flex-1 space-y-8 overflow-y-auto overscroll-contain p-6">
 				{sidebarGroups.map((group) => {
 					const items = isManager
 						? group.items.filter((i) => MANAGER_VISIBLE_HREFS.has(i.href))
@@ -289,26 +290,18 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
 				})}
 			</nav>
 
-			<div className="mt-auto space-y-1 border-t border-border p-4">
-				<Link
-					href="/login"
-					onClick={handleLinkClick}
-					className={cn(
-						"block rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-						isCollapsed && "text-center px-0",
-					)}
-				>
-					{isCollapsed ? "In" : "Demo sign-in"}
-				</Link>
+			<div className="shrink-0 space-y-2 border-t border-border p-4">
 				<Link
 					href="/"
 					onClick={handleLinkClick}
+					title={isCollapsed ? "Back to website home" : undefined}
 					className={cn(
-						"block rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-						isCollapsed && "text-center px-0",
+						"flex items-center justify-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted",
+						isCollapsed && "px-2",
 					)}
 				>
-					{isCollapsed ? "←" : "← Back to public site"}
+					<Home className="h-4 w-4 shrink-0" />
+					{!isCollapsed && <span>Back to website</span>}
 				</Link>
 			</div>
 		</div>

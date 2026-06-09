@@ -152,12 +152,12 @@ Credentials are defined **once** in `.env`. Compose passes them to the `db` cont
 
 | Variable | Example | Purpose |
 |----------|---------|---------|
-| `MYSQL_ROOT_PASSWORD` | *(strong password)* | MariaDB root — **container init only**, not used by Django |
+| `MYSQL_ROOT_PASSWORD` | *(strong password)* | MariaDB **root** admin — optional; if omitted, uses `DB_PASSWORD`. Not used by Django. |
 | `DB_HOST` | `db` | Docker service name (**do not change** for Compose deploy) |
 | `DB_PORT` | `3306` | MariaDB port |
-| `DB_NAME` | `theswolerepublic` | Database name |
-| `DB_USER` | `yel` | App user (Django + MariaDB) |
-| `DB_PASSWORD` | *(strong password)* | App password (must match what MariaDB creates) |
+| `DB_NAME` | `ELP` | Database name |
+| `DB_USER` | `elpdb` | App user (Django + MariaDB) |
+| `DB_PASSWORD` | *(see `.env.deploy.example`)* | App password — use **single quotes** if it contains `$` or `#` |
 
 > **Important:** MariaDB initializes the database **only on first start** (empty volume). If you change `DB_USER` / `DB_PASSWORD` later, you must update MySQL users inside the container or reset the volume (`docker compose down -v` — **destroys all data**).
 
@@ -175,10 +175,10 @@ Credentials are defined **once** in `.env`. Compose passes them to the `db` cont
 | `EMAIL_PORT` | `587` |
 | `EMAIL_USE_TLS` | `1` |
 | `EMAIL_USE_SSL` | `0` |
-| `EMAIL_HOST_USER` | `admin@theswolerepublic.com` |
+| `EMAIL_HOST_USER` | `admin@yourenhancedlife.com` |
 | `EMAIL_HOST_PASSWORD` | *(Zoho app / SMTP password)* |
-| `DEFAULT_FROM_EMAIL` | `admin@theswolerepublic.com` |
-| `CONTACT_FORM_TO` | `admin@theswolerepublic.com` |
+| `DEFAULT_FROM_EMAIL` | `admin@yourenhancedlife.com` |
+| `CONTACT_FORM_TO` | `admin@yourenhancedlife.com` |
 
 If the SMTP password contains `$` or `#`, wrap it in **single quotes** in `.env`:
 
@@ -465,9 +465,19 @@ docker compose exec backend python manage.py shell
 
 ## Troubleshooting
 
-### `docker compose up` fails on `.env`
+### `docker compose up` fails on `.env` / `MYSQL_ROOT_PASSWORD`
 
-Ensure all required variables are set — Compose will error if `MYSQL_ROOT_PASSWORD`, `DB_USER`, or `DB_PASSWORD` is missing.
+Docker Compose reads **`.env` in the project root** (next to `docker-compose.yml`), **not** `backend/.env`.
+
+```bash
+cd ~/elp    # folder that contains docker-compose.yml
+cp .env.deploy.example .env
+nano .env   # DB_NAME=ELP, DB_USER=elpdb, DB_PASSWORD='...' (single quotes if password has $ or %)
+```
+
+`MYSQL_ROOT_PASSWORD` is optional — if you leave it as placeholder or remove it, Compose uses `DB_PASSWORD` for MariaDB root on first boot.
+
+Ensure all required variables are set — Compose will error if `DB_USER` or `DB_PASSWORD` is missing.
 
 ### Backend unhealthy / cannot connect to database
 
@@ -515,7 +525,7 @@ MariaDB already initialized with the old password. Either:
 1. Update the user inside MariaDB:
    ```bash
    docker compose exec db mariadb -u root -p
-   -- ALTER USER 'yel'@'%' IDENTIFIED BY 'new_password'; FLUSH PRIVILEGES;
+   -- ALTER USER 'elpdb'@'%' IDENTIFIED BY 'new_password'; FLUSH PRIVILEGES;
    ```
 2. Or reset everything (data loss): `docker compose down -v` then `docker compose up -d --build`
 

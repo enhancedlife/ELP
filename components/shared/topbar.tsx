@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Home, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AppSwitcher } from "./app-switcher";
@@ -45,6 +46,17 @@ export function Topbar() {
 				className="flex shrink-0 items-center gap-2 sm:gap-3"
 				aria-label="Dashboard toolbar"
 			>
+				<Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex" asChild>
+					<Link href="/">
+						<Home className="h-4 w-4" />
+						<span>View site</span>
+					</Link>
+				</Button>
+				<Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" asChild>
+					<Link href="/" aria-label="Back to website home">
+						<Home className="h-4 w-4" />
+					</Link>
+				</Button>
 				<AppSwitcher />
 				<ThemeToggle />
 				<DashboardNotificationsMenu />

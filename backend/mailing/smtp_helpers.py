@@ -32,7 +32,7 @@ def smtp_failure_user_message(exc: BaseException) -> str:
     if code == 530 or ("5.5.1" in err_s and "authentication" in low):
         return (
             "Zoho (and many hosts) returned 530 / Authentication Required: the server did not accept your "
-            "SMTP login. Fix: (1) Use the real mailbox password for admin@theswolerepublic.com, or create an "
+            "SMTP login. Fix: (1) Use the real mailbox password for admin@yourenhancedlife.com, or create an "
             "Application-Specific Password in Zoho Mail → Settings → Security (required if 2FA is on). "
             "(2) EMAIL_HOST_USER must be the full email address. "
             "(3) If 587 + TLS fails, try port 465 with EMAIL_USE_SSL=1 and EMAIL_USE_TLS=0. "

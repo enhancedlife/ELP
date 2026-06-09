@@ -1,8 +1,19 @@
 import { updateSession } from '@/lib/supabase/middleware'
 import { type NextRequest } from 'next/server'
 
+/** Inject server secret for dashboard BFF rewrites (next.config beforeFiles → Django). */
+function withDashboardSecret(request: NextRequest): NextRequest {
+  const secret = (process.env.DASHBOARD_SERVER_SECRET || '').trim()
+  if (!secret || !request.nextUrl.pathname.startsWith('/api/dashboard/')) {
+    return request
+  }
+  const headers = new Headers(request.headers)
+  headers.set('X-Dashboard-Secret', secret)
+  return new NextRequest(request.url, { headers })
+}
+
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  return await updateSession(withDashboardSecret(request))
 }
 
 export const config = {

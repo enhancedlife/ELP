@@ -177,7 +177,12 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold">Email</h3>
-                    <p className="text-gray-400 mt-1">contact@yourenhancedlife.com</p>
+                    <a
+                      href="mailto:admin@yourenhancedlife.com"
+                      className="text-gray-400 mt-1 inline-block hover:text-green-400 transition"
+                    >
+                      admin@yourenhancedlife.com
+                    </a>
                   </div>
                 </div>
 

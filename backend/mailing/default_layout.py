@@ -53,8 +53,8 @@ DEFAULT_SYSTEM_EMAIL_TEMPLATE = """<!DOCTYPE html>
                 </a>
               </p>
               <p style="margin:6px 0;">
-                <a href="mailto:admin@theswolerepublic.com" style="color:#D9CDB8; text-decoration:none;">
-                  admin@theswolerepublic.com
+                <a href="mailto:admin@yourenhancedlife.com" style="color:#D9CDB8; text-decoration:none;">
+                  admin@yourenhancedlife.com
                 </a>
               </p>
               <p style="margin-top:10px; font-size:12px;">

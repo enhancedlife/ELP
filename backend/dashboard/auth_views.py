@@ -263,6 +263,23 @@ def me(request):
     if request.method == "GET":
         return Response({"user": _serialize_user(user)})
 
+    update_fields: list[str] = []
+
+    if "email" in request.data:
+        email = str(request.data.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            return Response(
+                {"detail": "A valid email address is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+            return Response(
+                {"detail": "An account with this email already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.email = email
+        update_fields.append("email")
+
     # Display name: split to first/last (same as registration). Omitted = use first_name/last_name only.
     if "name" in request.data:
         s = str(request.data.get("name") or "").strip()
@@ -273,21 +290,26 @@ def me(request):
         else:
             user.first_name = ""
             user.last_name = ""
+        update_fields.extend(["first_name", "last_name"])
     else:
         first_name = request.data.get("first_name")
         last_name = request.data.get("last_name")
-        if first_name is None and last_name is None:
-            return Response(
-                {
-                    "detail": "No valid fields to update. Send name, or first_name and/or last_name.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         if first_name is not None:
             user.first_name = str(first_name).strip()[:150]
+            update_fields.append("first_name")
         if last_name is not None:
             user.last_name = str(last_name).strip()[:150]
-    user.save(update_fields=["first_name", "last_name"])
+            update_fields.append("last_name")
+
+    if not update_fields:
+        return Response(
+            {
+                "detail": "No valid fields to update. Send name, first_name, last_name, and/or email.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.save(update_fields=list(dict.fromkeys(update_fields)))
     return Response({"user": _serialize_user(user)})
 
 
