@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
@@ -30,11 +33,13 @@ import {
 	Mail,
 	Phone,
 	Filter,
+	Trash2,
 } from "lucide-react";
 import { ToolbarDropdown } from "@/components/shared/toolbar-dropdown";
 import { Label } from "@/components/ui/label";
 import { useDashboardAuth } from "@/components/providers/dashboard-auth-provider";
 import {
+	bulkDashboardUsers,
 	describeDashboardFetchFailure,
 	getDashboardUsers,
 	patchDashboardUser,
@@ -71,6 +76,9 @@ export default function UsersPage() {
 	const [newName, setNewName] = useState("");
 	const [newAccountRole, setNewAccountRole] = useState<NewAccountRole>("member");
 	const [savingUser, setSavingUser] = useState(false);
+	const [selected, setSelected] = useState<Set<number>>(new Set());
+	const [trashConfirmOpen, setTrashConfirmOpen] = useState(false);
+	const [bulkWorking, setBulkWorking] = useState(false);
 
 	const reloadUsers = useCallback(async () => {
 		setLoading(true);
@@ -82,6 +90,7 @@ export default function UsersPage() {
 			setBanner(null);
 			setUsers(Array.isArray(data.users) ? data.users : []);
 		}
+		setSelected(new Set());
 		setLoading(false);
 	}, []);
 
@@ -96,43 +105,139 @@ export default function UsersPage() {
 		};
 	}, [reloadUsers]);
 
-	const filtered = users.filter((u) => {
+	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
-		if (!q) return true;
-		return (
-			u.name.toLowerCase().includes(q) ||
-			u.email.toLowerCase().includes(q) ||
-			u.role.toLowerCase().includes(q)
+		if (!q) return users;
+		return users.filter(
+			(u) =>
+				u.name.toLowerCase().includes(q) ||
+				u.email.toLowerCase().includes(q) ||
+				u.role.toLowerCase().includes(q),
 		);
-	});
+	}, [users, query]);
+
+	const filteredIds = useMemo(() => filtered.map((u) => u.id), [filtered]);
+	const allFilteredSelected =
+		filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
+	const someFilteredSelected =
+		filteredIds.some((id) => selected.has(id)) && !allFilteredSelected;
+
+	function toggleOne(id: number, checked: boolean) {
+		setSelected((prev) => {
+			const next = new Set(prev);
+			if (checked) next.add(id);
+			else next.delete(id);
+			return next;
+		});
+	}
+
+	function toggleAllFiltered(checked: boolean) {
+		setSelected((prev) => {
+			const next = new Set(prev);
+			for (const id of filteredIds) {
+				if (checked) next.add(id);
+				else next.delete(id);
+			}
+			return next;
+		});
+	}
+
+	async function moveSelectedToTrash() {
+		const ids = Array.from(selected);
+		if (ids.length === 0) return;
+		setBulkWorking(true);
+		const res = await bulkDashboardUsers("soft_delete", ids);
+		setBulkWorking(false);
+		setTrashConfirmOpen(false);
+		if (!res.ok || !res.data) {
+			toast.error(res.errorMessage || describeDashboardFetchFailure(res.status));
+			return;
+		}
+		const { ok, failed } = res.data;
+		if (ok.length > 0) {
+			toast.success(
+				ok.length === 1
+					? "1 user moved to trash."
+					: `${ok.length} users moved to trash.`,
+			);
+		}
+		if (failed.length > 0) {
+			toast.error(
+				failed.length === 1
+					? failed[0].detail
+					: `${failed.length} users could not be moved to trash.`,
+			);
+		}
+		await reloadUsers();
+	}
 
 	return (
 		<div className="space-y-6">
-			<div className="flex items-center justify-between">
+			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h2 className="text-3xl font-bold tracking-tight">Users</h2>
 					<p className="text-muted-foreground">
-						Browse accounts, open a user for full details (including imported Woo addresses),
-						password resets, or create users here / in{" "}
-						<code className="rounded bg-muted px-1 text-sm">/admin/</code>. Member imports use{" "}
-						<code className="rounded bg-muted px-1 text-sm">import_wordpress_users</code>{" "}
-						against this same database.
+						Select users to move to trash, or manage accounts individually. Deleted users
+						can be restored or permanently removed from{" "}
+						<Link href="/dashboard/users/trash" className="text-primary underline">
+							Trash
+						</Link>
+						.
 					</p>
 				</div>
-				<Button
-					className="flex items-center gap-2"
-					type="button"
-					onClick={() => setAddOpen(true)}
-				>
-					<Plus className="h-4 w-4" />
-					Add user
-				</Button>
+				<div className="flex flex-wrap items-center gap-2">
+					<Button variant="outline" className="gap-2" asChild>
+						<Link href="/dashboard/users/trash">
+							<Trash2 className="h-4 w-4" />
+							Trash
+						</Link>
+					</Button>
+					<Button
+						className="flex items-center gap-2"
+						type="button"
+						onClick={() => setAddOpen(true)}
+					>
+						<Plus className="h-4 w-4" />
+						Add user
+					</Button>
+				</div>
 			</div>
 
 			{banner ? (
 				<p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg px-4 py-3">
 					{banner}
 				</p>
+			) : null}
+
+			{selected.size > 0 ? (
+				<Card className="border-destructive/30 bg-destructive/5">
+					<CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+						<p className="text-sm font-medium">
+							{selected.size} user{selected.size === 1 ? "" : "s"} selected
+						</p>
+						<div className="flex flex-wrap gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => setSelected(new Set())}
+							>
+								Clear selection
+							</Button>
+							<Button
+								type="button"
+								variant="destructive"
+								size="sm"
+								className="gap-2"
+								disabled={bulkWorking}
+								onClick={() => setTrashConfirmOpen(true)}
+							>
+								<Trash2 className="h-4 w-4" />
+								Move to trash
+							</Button>
+						</div>
+					</CardContent>
+				</Card>
 			) : null}
 
 			<Card>
@@ -166,6 +271,19 @@ export default function UsersPage() {
 					<Table>
 						<TableHeader>
 							<TableRow>
+								<TableHead className="w-10">
+									<Checkbox
+										checked={
+											allFilteredSelected
+												? true
+												: someFilteredSelected
+													? "indeterminate"
+													: false
+										}
+										onCheckedChange={(v) => toggleAllFiltered(v === true)}
+										aria-label="Select all users on this page"
+									/>
+								</TableHead>
 								<TableHead>User</TableHead>
 								<TableHead>Role</TableHead>
 								<TableHead>Status</TableHead>
@@ -175,7 +293,17 @@ export default function UsersPage() {
 						</TableHeader>
 						<TableBody>
 							{filtered.map((user) => (
-								<TableRow key={user.id}>
+								<TableRow
+									key={user.id}
+									data-state={selected.has(user.id) ? "selected" : undefined}
+								>
+									<TableCell>
+										<Checkbox
+											checked={selected.has(user.id)}
+											onCheckedChange={(v) => toggleOne(user.id, v === true)}
+											aria-label={`Select ${user.name}`}
+										/>
+									</TableCell>
 									<TableCell>
 										<div className="flex items-center gap-3">
 											<Avatar className="h-8 w-8">
@@ -302,7 +430,9 @@ export default function UsersPage() {
 																		is_active: false,
 																	});
 																	if (!res.ok) {
-																		alert(res.errorMessage || `HTTP ${res.status}`);
+																		toast.error(
+																			res.errorMessage || `HTTP ${res.status}`,
+																		);
 																		return;
 																	}
 																	await reloadUsers();
@@ -322,7 +452,9 @@ export default function UsersPage() {
 																		is_active: true,
 																	});
 																	if (!res.ok) {
-																		alert(res.errorMessage || `HTTP ${res.status}`);
+																		toast.error(
+																			res.errorMessage || `HTTP ${res.status}`,
+																		);
 																		return;
 																	}
 																	await reloadUsers();
@@ -330,6 +462,18 @@ export default function UsersPage() {
 															}}
 														>
 															Activate
+														</button>
+														<button
+															type="button"
+															className={cn(menuBtn, "text-destructive")}
+															onClick={() => {
+																close();
+																setSelected(new Set([user.id]));
+																setTrashConfirmOpen(true);
+															}}
+														>
+															<Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+															Move to trash
 														</button>
 													</div>
 												)}
@@ -342,6 +486,37 @@ export default function UsersPage() {
 					</Table>
 				</CardContent>
 			</Card>
+
+			<Dialog open={trashConfirmOpen} onOpenChange={setTrashConfirmOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Move to trash?</DialogTitle>
+						<DialogDescription>
+							{selected.size === 1
+								? "This user will be deactivated and hidden from the main list. You can restore or permanently delete them from the Trash page."
+								: `${selected.size} users will be deactivated and hidden from the main list. You can restore or permanently delete them from the Trash page.`}
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setTrashConfirmOpen(false)}
+							disabled={bulkWorking}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="button"
+							variant="destructive"
+							disabled={bulkWorking}
+							onClick={() => void moveSelectedToTrash()}
+						>
+							{bulkWorking ? "Moving…" : "Move to trash"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			<Dialog open={addOpen} onOpenChange={setAddOpen}>
 				<DialogContent>
@@ -424,7 +599,7 @@ export default function UsersPage() {
 									});
 									setSavingUser(false);
 									if (!res.ok) {
-										alert(res.errorMessage || `HTTP ${res.status}`);
+										toast.error(res.errorMessage || `HTTP ${res.status}`);
 										return;
 									}
 									setAddOpen(false);

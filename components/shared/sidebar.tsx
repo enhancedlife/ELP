@@ -24,6 +24,7 @@ import {
 	HelpCircle,
 	LogIn,
 	AlertCircle,
+	Trash2,
 	Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,12 @@ const sidebarGroups = [
 				href: "/dashboard/users",
 				icon: Users,
 				badge: "12",
+			},
+			{
+				title: "User trash",
+				href: "/dashboard/users/trash",
+				icon: Trash2,
+				badge: null,
 			},
 			{
 				title: "Projects",
@@ -168,6 +175,7 @@ const MANAGER_VISIBLE_HREFS = new Set<string>([
 	"/dashboard/analytics",
 	"/dashboard/settings",
 	"/dashboard/users",
+	"/dashboard/users/trash",
 	"/dashboard/email",
 	"/dashboard/email/bulk",
 	"/dashboard/email/log",

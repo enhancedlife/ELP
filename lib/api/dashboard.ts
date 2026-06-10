@@ -28,6 +28,7 @@ import type {
 	DashboardSystemEmailLayout,
 	DashboardUserDetail,
 	DashboardUserRow,
+	DashboardUsersBulkResult,
 	DashboardUsersResponse,
 } from "@/lib/types/dashboard";
 
@@ -177,8 +178,11 @@ export function getDashboardAnalytics() {
 	return fetchDashboardJson<DashboardAnalyticsResponse>("analytics");
 }
 
-export function getDashboardUsers(limit = 5000) {
-	const q = limit > 0 ? `?limit=${encodeURIComponent(String(limit))}` : "";
+export function getDashboardUsers(limit = 5000, options?: { trash?: boolean }) {
+	const params = new URLSearchParams();
+	if (limit > 0) params.set("limit", String(limit));
+	if (options?.trash) params.set("trash", "1");
+	const q = params.toString() ? `?${params.toString()}` : "";
 	return fetchDashboardJson<DashboardUsersResponse>(`users${q}`);
 }
 
@@ -598,6 +602,15 @@ export function patchDashboardUser(
 
 export function deleteDashboardUser(id: number) {
 	return mutateDashboardJson<null>("DELETE", `users/${id}`);
+}
+
+export type DashboardUsersBulkAction = "soft_delete" | "restore" | "permanent_delete";
+
+export function bulkDashboardUsers(action: DashboardUsersBulkAction, ids: number[]) {
+	return mutateDashboardJson<DashboardUsersBulkResult>("POST", "users/bulk", {
+		action,
+		ids,
+	});
 }
 
 export function getDashboardDatabaseBackupInfo() {

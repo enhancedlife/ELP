@@ -57,6 +57,13 @@ export type DashboardUserRow = {
 	status: string;
 	avatar: string;
 	lastSeen: string;
+	/** ISO datetime when soft-deleted; null when active. */
+	deletedAt?: string | null;
+};
+
+export type DashboardUsersBulkResult = {
+	ok: number[];
+	failed: { id: number; detail: string }[];
 };
 
 /** WooCommerce-style blocks from WordPress export / MemberProfile. */

@@ -92,6 +92,7 @@ class MemberProfile(models.Model):
     )
     billing = models.JSONField(default=dict, blank=True)
     shipping = models.JSONField(default=dict, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

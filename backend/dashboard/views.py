@@ -14,7 +14,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from common.soft_delete import soft_delete
+from common.soft_delete import soft_delete, soft_restore
 
 from content.models import LandingPage
 from content.serializers import LandingPageDashboardSerializer
@@ -34,6 +34,7 @@ from .role_utils import (
     is_dashboard_manager,
     request_is_manager,
     require_full_admin,
+    require_superuser,
 )
 from .serializers_messaging import DashboardMessageSerializer, DashboardNotificationSerializer
 from .serializers_prefs import NotificationPreferenceSerializer
@@ -71,9 +72,81 @@ def _alive_sponsors_queryset(request):
     return qs.filter(deleted_at__isnull=True)
 
 
+def _alive_users_queryset(request):
+    qs = User.objects.order_by("-date_joined", "-last_login", "id")
+    if request.user.is_authenticated and request_is_manager(request):
+        qs = qs.filter(is_superuser=False)
+    return qs.filter(Q(member_profile__deleted_at__isnull=True) | Q(member_profile__isnull=True))
+
+
+def _trashed_users_queryset(request):
+    qs = User.objects.order_by("-member_profile__deleted_at", "-id")
+    if request.user.is_authenticated and request_is_manager(request):
+        qs = qs.filter(is_superuser=False)
+    return qs.filter(member_profile__deleted_at__isnull=False)
+
+
+def _ensure_member_profile(user) -> MemberProfile:
+    profile, _ = MemberProfile.objects.get_or_create(
+        user=user,
+        defaults={"billing": {}, "shipping": {}},
+    )
+    return profile
+
+
+def _user_is_trashed(user) -> bool:
+    try:
+        return user.member_profile.deleted_at is not None
+    except MemberProfile.DoesNotExist:
+        return False
+
+
+def _soft_delete_user(user) -> None:
+    profile = _ensure_member_profile(user)
+    soft_delete(profile)
+    if user.is_active:
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+    Token.objects.filter(user=user).delete()
+
+
+def _restore_user(user) -> None:
+    profile = _ensure_member_profile(user)
+    soft_restore(profile)
+    if not user.is_active:
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+
+
+def _permanent_delete_user(user) -> None:
+    user.delete()
+
+
+def _user_mutation_blocked(request, target) -> Response | None:
+    if request.user.is_authenticated and request.user.id == target.id:
+        return Response(
+            {"detail": "You cannot modify your own account here."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if request.user.is_authenticated and request_is_manager(request) and target.is_superuser:
+        return Response(
+            {"detail": MANAGER_READ_ONLY_USER_DETAIL},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return None
+
+
 def _user_row(u):
     role = "Admin" if u.is_superuser else ("Manager" if u.is_staff else "User")
     st = "Active" if u.is_active else "Inactive"
+    deleted_at = None
+    try:
+        if u.member_profile.deleted_at is not None:
+            deleted_at = u.member_profile.deleted_at.isoformat()
+    except MemberProfile.DoesNotExist:
+        pass
+    if deleted_at:
+        st = "Deleted"
     return {
         "id": u.id,
         "name": (u.get_full_name() or u.username or u.email or "User").strip(),
@@ -82,6 +155,7 @@ def _user_row(u):
         "status": st,
         "avatar": "",
         "lastSeen": _relative_time(u.last_login),
+        "deletedAt": deleted_at,
     }
 
 
@@ -176,7 +250,7 @@ def overview(_request):
     alive_sponsors = Sponsor.objects.filter(deleted_at__isnull=True)
     sponsors_active = alive_sponsors.filter(is_active=True).count()
     sponsors_total = alive_sponsors.count()
-    total_users = User.objects.count()
+    total_users = _alive_users_queryset(_request).count()
     staff_users = User.objects.filter(is_staff=True, is_active=True).count()
 
     recent = []
@@ -340,9 +414,10 @@ def users_collection(request):
         except (TypeError, ValueError):
             limit = 500
         limit = max(1, min(limit, 5000))
-        qs = User.objects.order_by("-date_joined", "-last_login", "id")
-        if request.user.is_authenticated and request_is_manager(request):
-            qs = qs.filter(is_superuser=False)
+        if _truthy_query_param(request.query_params.get("trash")):
+            qs = _trashed_users_queryset(request)
+        else:
+            qs = _alive_users_queryset(request)
         rows = [_user_row(u) for u in qs[:limit]]
         return Response({"users": rows})
     email = (request.data.get("email") or "").strip().lower()
@@ -401,6 +476,80 @@ def users_collection(request):
         user.is_staff = True
         user.save(update_fields=["is_superuser", "is_staff"])
     return Response(_user_row(user), status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([DashboardAccess])
+def users_bulk(request):
+    """
+    Bulk user trash operations.
+    action: soft_delete | restore | permanent_delete
+    ids: list of user primary keys
+    """
+    action = (request.data.get("action") or "").strip().lower()
+    raw_ids = request.data.get("ids")
+    if action not in ("soft_delete", "restore", "permanent_delete"):
+        return Response(
+            {"detail": "action must be soft_delete, restore, or permanent_delete."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if not isinstance(raw_ids, list) or not raw_ids:
+        return Response(
+            {"detail": "ids must be a non-empty list of user ids."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if action == "permanent_delete":
+        denied = require_superuser(request)
+        if denied is not None:
+            return denied
+
+    parsed_ids: list[int] = []
+    for raw in raw_ids:
+        try:
+            parsed_ids.append(int(raw))
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Each id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    unique_ids = list(dict.fromkeys(parsed_ids))
+
+    ok: list[int] = []
+    failed: list[dict] = []
+    for pk in unique_ids:
+        try:
+            target = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            failed.append({"id": pk, "detail": "User not found."})
+            continue
+
+        blocked = _user_mutation_blocked(request, target)
+        if blocked is not None:
+            failed.append({"id": pk, "detail": blocked.data.get("detail", "Forbidden.")})
+            continue
+
+        if action == "soft_delete":
+            if _user_is_trashed(target):
+                failed.append({"id": pk, "detail": "Already in trash."})
+                continue
+            _soft_delete_user(target)
+            ok.append(pk)
+        elif action == "restore":
+            if not _user_is_trashed(target):
+                failed.append({"id": pk, "detail": "User is not in trash."})
+                continue
+            _restore_user(target)
+            ok.append(pk)
+        elif action == "permanent_delete":
+            if not _user_is_trashed(target):
+                failed.append({"id": pk, "detail": "Soft-delete the user before permanent delete."})
+                continue
+            _permanent_delete_user(target)
+            ok.append(pk)
+
+    return Response({"ok": ok, "failed": failed})
 
 
 @api_view(["GET"])
@@ -725,13 +874,15 @@ def user_detail(request, pk):
     if request.method == "GET":
         return Response(_user_admin_detail(target))
     if request.method == "DELETE":
-        if request.user.is_authenticated and request.user.id == target.id:
+        blocked = _user_mutation_blocked(request, target)
+        if blocked is not None:
+            return blocked
+        if _user_is_trashed(target):
             return Response(
-                {"detail": "You cannot delete your own account here."},
+                {"detail": "User is already in trash. Restore or permanently delete from the trash page."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        target.is_active = False
-        target.save(update_fields=["is_active"])
+        _soft_delete_user(target)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     # PATCH

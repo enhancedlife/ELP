@@ -9,6 +9,7 @@ from . import db_backup_views
 urlpatterns = [
     path("overview", views.overview),
     path("analytics", views.analytics),
+    path("users/bulk", views.users_bulk),
     path("users/<int:pk>", views.user_detail),
     path("users", views.users_collection),
     path("projects", views.projects_list),
