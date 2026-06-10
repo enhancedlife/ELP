@@ -25,7 +25,9 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, RotateCcw, Search, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, FileUp, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useDashboardAuth } from "@/components/providers/dashboard-auth-provider";
 import {
 	bulkDashboardUsers,
@@ -42,6 +44,48 @@ function formatDeletedAt(iso: string | null | undefined): string {
 	return d.toLocaleString();
 }
 
+/** Parse emails from plain text — one per line; ignores blanks and # comments. */
+function parseEmailListText(text: string): string[] {
+	const seen = new Set<string>();
+	const out: string[] = [];
+	for (const rawLine of text.split(/\r?\n/)) {
+		let line = rawLine.trim();
+		if (!line || line.startsWith("#")) continue;
+		if (line.includes("#")) {
+			line = line.split("#")[0].trim();
+		}
+		line = line.replace(/^["']|["']$/g, "").trim().toLowerCase();
+		if (!line || !line.includes("@")) continue;
+		if (!seen.has(line)) {
+			seen.add(line);
+			out.push(line);
+		}
+	}
+	return out;
+}
+
+function selectUsersByEmails(
+	trashUsers: DashboardUserRow[],
+	emails: string[],
+): { matchedIds: number[]; notInTrash: string[] } {
+	const byEmail = new Map<string, DashboardUserRow>();
+	for (const u of trashUsers) {
+		const e = (u.email || "").trim().toLowerCase();
+		if (e && e !== "—") byEmail.set(e, u);
+	}
+	const matchedIds: number[] = [];
+	const notInTrash: string[] = [];
+	for (const email of emails) {
+		const user = byEmail.get(email);
+		if (user) {
+			matchedIds.push(user.id);
+		} else {
+			notInTrash.push(email);
+		}
+	}
+	return { matchedIds, notInTrash };
+}
+
 export default function UsersTrashPage() {
 	const { user: session } = useDashboardAuth();
 	const canPermanentDelete = isDashboardFullAdmin(session);
@@ -53,6 +97,8 @@ export default function UsersTrashPage() {
 	const [restoreOpen, setRestoreOpen] = useState(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [working, setWorking] = useState(false);
+	const [emailListText, setEmailListText] = useState("");
+	const [emailListSummary, setEmailListSummary] = useState<string | null>(null);
 
 	const reloadTrash = useCallback(async () => {
 		setLoading(true);
@@ -167,6 +213,59 @@ export default function UsersTrashPage() {
 		await reloadTrash();
 	}
 
+	function applyEmailListSelection(text: string) {
+		const emails = parseEmailListText(text);
+		if (emails.length === 0) {
+			toast.error("No valid emails found. Put one email per line in the file or text box.");
+			setEmailListSummary(null);
+			return;
+		}
+		const { matchedIds, notInTrash } = selectUsersByEmails(users, emails);
+		setSelected(new Set(matchedIds));
+		const parts: string[] = [];
+		if (matchedIds.length > 0) {
+			parts.push(
+				`${matchedIds.length} user${matchedIds.length === 1 ? "" : "s"} selected from ${emails.length} email${emails.length === 1 ? "" : "s"} in your list.`,
+			);
+		} else {
+			parts.push("No trashed users matched any email in your list.");
+		}
+		if (notInTrash.length > 0) {
+			const preview = notInTrash.slice(0, 5).join(", ");
+			const more =
+				notInTrash.length > 5 ? ` (+${notInTrash.length - 5} more)` : "";
+			parts.push(
+				`${notInTrash.length} email${notInTrash.length === 1 ? "" : "s"} not in trash: ${preview}${more}`,
+			);
+		}
+		setEmailListSummary(parts.join(" "));
+		if (matchedIds.length > 0) {
+			toast.success(
+				`Selected ${matchedIds.length} user${matchedIds.length === 1 ? "" : "s"} for restore.`,
+			);
+		} else {
+			toast.warning("No matching users in trash.");
+		}
+	}
+
+	function handleEmailFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		e.target.value = "";
+		if (!file) return;
+		if (!file.name.toLowerCase().endsWith(".txt") && file.type && file.type !== "text/plain") {
+			toast.error("Please upload a plain .txt file (one email per line).");
+			return;
+		}
+		const reader = new FileReader();
+		reader.onload = () => {
+			const text = typeof reader.result === "string" ? reader.result : "";
+			setEmailListText(text);
+			applyEmailListSelection(text);
+		};
+		reader.onerror = () => toast.error("Could not read the file.");
+		reader.readAsText(file);
+	}
+
 	return (
 		<div className="space-y-6">
 			<div className="flex flex-wrap items-center justify-between gap-3">
@@ -232,6 +331,58 @@ export default function UsersTrashPage() {
 					</CardContent>
 				</Card>
 			) : null}
+
+			<Card>
+				<CardHeader>
+					<CardTitle className="text-lg">Select by email list</CardTitle>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<p className="text-sm text-muted-foreground">
+						Upload a <code className="rounded bg-muted px-1">.txt</code> file with one email
+						per line, or paste emails below. Matching trashed users will be selected so you
+						can restore them in bulk.
+					</p>
+					<div className="flex flex-wrap items-center gap-3">
+						<Label htmlFor="email-list-file" className="sr-only">
+							Upload email list
+						</Label>
+						<Input
+							id="email-list-file"
+							type="file"
+							accept=".txt,text/plain"
+							className="max-w-xs cursor-pointer"
+							onChange={handleEmailFileChange}
+						/>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							className="gap-2"
+							disabled={loading}
+							onClick={() => applyEmailListSelection(emailListText)}
+						>
+							<FileUp className="h-4 w-4" />
+							Select matching users
+						</Button>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="email-list-paste">Or paste emails (one per line)</Label>
+						<Textarea
+							id="email-list-paste"
+							placeholder={"user1@example.com\nuser2@example.com\n# lines starting with # are ignored"}
+							value={emailListText}
+							onChange={(e) => setEmailListText(e.target.value)}
+							rows={5}
+							className="font-mono text-sm"
+						/>
+					</div>
+					{emailListSummary ? (
+						<p className="text-sm text-muted-foreground rounded-lg border bg-muted/40 px-3 py-2">
+							{emailListSummary}
+						</p>
+					) : null}
+				</CardContent>
+			</Card>
 
 			<Card>
 				<CardContent className="p-6">
