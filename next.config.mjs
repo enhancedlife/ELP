@@ -28,11 +28,9 @@ const nextConfig = {
   },
   async rewrites() {
     return {
-      // Dashboard BFF: beforeFiles so Turbopack dev does not 404 on the catch-all route handler.
-      beforeFiles: [
-        { source: "/api/dashboard/:path*", destination: `${origin}/api/dashboard/:path*` },
-      ],
       afterFiles: [
+        // Dashboard BFF — same rewrite tier as /api/auth (beforeFiles breaks in production standalone).
+        { source: "/api/dashboard/:path*", destination: `${origin}/api/dashboard/:path*` },
         { source: "/api/auth/:path*", destination: `${origin}/api/auth/:path*` },
         { source: "/api/portal/:path*", destination: `${origin}/api/portal/:path*` },
         { source: "/api/landing-pages/:path+", destination: `${origin}/api/landing-pages/:path+` },

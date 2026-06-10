@@ -1,19 +1,34 @@
 import { updateSession } from '@/lib/supabase/middleware'
-import { type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
-/** Inject server secret for dashboard BFF rewrites (next.config beforeFiles → Django). */
-function withDashboardSecret(request: NextRequest): NextRequest {
-  const secret = (process.env.DASHBOARD_SERVER_SECRET || '').trim()
-  if (!secret || !request.nextUrl.pathname.startsWith('/api/dashboard/')) {
-    return request
-  }
+/** Inject X-Dashboard-Secret for /api/dashboard/* rewrites (required when DEBUG=0 on Django). */
+function withDashboardSecretHeaders(request: NextRequest): Headers {
   const headers = new Headers(request.headers)
-  headers.set('X-Dashboard-Secret', secret)
-  return new NextRequest(request.url, { headers })
+  const secret = (process.env.DASHBOARD_SERVER_SECRET || '').trim()
+  if (secret && request.nextUrl.pathname.startsWith('/api/dashboard/')) {
+    headers.set('X-Dashboard-Secret', secret)
+  }
+  return headers
 }
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(withDashboardSecret(request))
+  const headers = withDashboardSecretHeaders(request)
+  const secretPatched =
+    headers.get('X-Dashboard-Secret') !== request.headers.get('X-Dashboard-Secret')
+
+  const res = await updateSession(request)
+
+  if (!secretPatched) {
+    return res
+  }
+
+  const out = NextResponse.next({
+    request: { headers },
+  })
+  for (const cookie of res.cookies.getAll()) {
+    out.cookies.set(cookie.name, cookie.value, cookie)
+  }
+  return out
 }
 
 export const config = {

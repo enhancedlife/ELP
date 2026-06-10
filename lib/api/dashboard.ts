@@ -47,10 +47,19 @@ async function fetchDashboardJson<T>(path: string): Promise<DashboardJsonResult<
 			headers: dashboardAuthHeaders(),
 			cache: "no-store",
 		});
+		const text = await res.text();
 		if (!res.ok) {
-			return { ok: false, data: null, status: res.status };
+			return {
+				ok: false,
+				data: null,
+				status: res.status,
+				errorMessage: parseDashboardApiErrorText(text),
+			};
 		}
-		return { ok: true, data: (await res.json()) as T, status: res.status };
+		if (!text) {
+			return { ok: true, data: null as T, status: res.status };
+		}
+		return { ok: true, data: JSON.parse(text) as T, status: res.status };
 	} catch {
 		return { ok: false, data: null, status: null };
 	}
@@ -67,9 +76,12 @@ export function describeDashboardFetchFailure(
 			"Could not reach the dashboard API. Start Django on port 8000 and set BACKEND_URL (or API_REWRITE_TARGET) on Next.js so the server can reach it (e.g. http://127.0.0.1:8000).";
 	} else if (status === 401 || status === 403) {
 		base =
-			"Access denied. Sign in with a staff account at /login, or configure DASHBOARD_SERVER_SECRET on Django and Next.js for server-to-server calls.";
+			"Access denied. Sign in with a superuser at /auth/admin/login, or set the same DASHBOARD_SERVER_SECRET in root .env for frontend and backend.";
+	} else if (status === 500) {
+		base =
+			"Dashboard API error (HTTP 500). Check backend logs: docker compose logs backend --tail=100";
 	} else {
-		base = `Dashboard API returned HTTP ${status}. Check Django logs and database connectivity.`;
+		base = `Dashboard API returned HTTP ${status}. See backend logs for details.`;
 	}
 	const extra = apiDetail?.trim();
 	if (!extra || base.includes(extra)) return base;

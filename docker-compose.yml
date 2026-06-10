@@ -59,6 +59,7 @@ services:
     environment:
       BACKEND_URL: http://backend:8000
       API_REWRITE_TARGET: http://backend:8000
+      DASHBOARD_SERVER_SECRET: ${DASHBOARD_SERVER_SECRET:?set DASHBOARD_SERVER_SECRET in .env}
       PUBLIC_SITE_BASE_URL: ${PUBLIC_SITE_URL:?set PUBLIC_SITE_URL in .env}
     depends_on:
       backend:
