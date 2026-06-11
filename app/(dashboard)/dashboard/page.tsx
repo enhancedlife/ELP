@@ -18,19 +18,19 @@ import type {
 
 const fallbackStats: DashboardStat[] = [
 	{
-		title: "Active landing pages",
+		title: "Site visits",
 		value: "—",
 		description: "Connect the API (see banner)",
 		trend: "neutral",
-		iconKey: "pages",
+		iconKey: "visits",
 	},
 ];
 
 const statAccent: Record<string, { color: string; bg: string }> = {
-	pages: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/40" },
-	sponsors: { color: "text-blue-600", bg: "bg-blue-50" },
-	users: { color: "text-purple-600", bg: "bg-purple-50" },
-	activity: { color: "text-orange-600", bg: "bg-orange-50" },
+	visits: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/40" },
+	users_week: { color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-950/40" },
+	users_month: { color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+	users: { color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40" },
 };
 
 export default function DashboardPage() {
@@ -70,7 +70,7 @@ export default function DashboardPage() {
 			<div className="flex flex-col gap-2">
 				<h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
 				<p className="text-muted-foreground text-lg">
-					Overview of content and accounts from the Django database.
+					Site visits and user sign-ups tracked from your live site.
 				</p>
 			</div>
 

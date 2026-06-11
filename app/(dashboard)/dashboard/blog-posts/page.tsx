@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react"
+import { ExternalLink, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -36,10 +36,12 @@ import {
 } from "@/components/ui/select"
 import {
   deleteDashboardBlogPost,
+  deleteDashboardBlogPostThumbnail,
   describeDashboardFetchFailure,
   getDashboardBlogPosts,
   patchDashboardBlogPost,
   postDashboardBlogPost,
+  uploadDashboardBlogPostThumbnail,
 } from "@/lib/api/dashboard"
 import { BLOG_CATEGORIES } from "@/lib/blog"
 import type { BlogPostRecord } from "@/lib/types"
@@ -77,6 +79,8 @@ const emptyForm = {
   sort_order: 0,
 }
 
+type CardImageMode = "url" | "upload"
+
 export default function DashboardBlogPostsPage() {
   const [posts, setPosts] = useState<BlogPostRecord[]>([])
   const [banner, setBanner] = useState<string | null>(null)
@@ -87,6 +91,28 @@ export default function DashboardBlogPostsPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [bodyBlocks, setBodyBlocks] = useState<BlogBodyBlock[]>(defaultBlogBodyBlocks())
+  const [imageMode, setImageMode] = useState<CardImageMode>("url")
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
+  const [hadUploadedThumbnail, setHadUploadedThumbnail] = useState(false)
+  const thumbnailInputRef = useRef<HTMLInputElement>(null)
+
+  function resetImageUploadState() {
+    setImageMode("url")
+    setThumbnailFile(null)
+    setThumbnailPreview(null)
+    setHadUploadedThumbnail(false)
+    if (thumbnailInputRef.current) thumbnailInputRef.current.value = ""
+  }
+
+  function setPreviewFromFile(file: File) {
+    setThumbnailFile(file)
+    const url = URL.createObjectURL(file)
+    setThumbnailPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev)
+      return url
+    })
+  }
 
   const loadPosts = useCallback(async () => {
     setLoading(true)
@@ -109,6 +135,7 @@ export default function DashboardBlogPostsPage() {
     setEditingId(null)
     setForm({ ...emptyForm, published_at: toDatetimeLocalValue(new Date().toISOString()) })
     setBodyBlocks(defaultBlogBodyBlocks())
+    resetImageUploadState()
     setDialogOpen(true)
   }
 
@@ -128,6 +155,17 @@ export default function DashboardBlogPostsPage() {
       is_published: p.is_published,
       sort_order: p.sort_order ?? 0,
     })
+    const thumb = p.thumbnail_url?.trim() || null
+    setHadUploadedThumbnail(Boolean(thumb))
+    setThumbnailFile(null)
+    if (thumbnailInputRef.current) thumbnailInputRef.current.value = ""
+    if (thumb) {
+      setImageMode("upload")
+      setThumbnailPreview(thumb)
+    } else {
+      setImageMode("url")
+      setThumbnailPreview(null)
+    }
     setDialogOpen(true)
   }
 
@@ -135,6 +173,10 @@ export default function DashboardBlogPostsPage() {
     const slug = form.slug.trim() || slugify(form.title)
     if (!slug || !form.title.trim() || !form.excerpt.trim()) {
       toast.error("Slug, title, and excerpt are required.")
+      return
+    }
+    if (imageMode === "upload" && !thumbnailFile && !thumbnailPreview) {
+      toast.error("Choose an image to upload, or switch to URL mode.")
       return
     }
     setSaving(true)
@@ -153,13 +195,35 @@ export default function DashboardBlogPostsPage() {
     const result = editingId
       ? await patchDashboardBlogPost(editingId, payload)
       : await postDashboardBlogPost(payload)
-    setSaving(false)
-    if (!result.ok) {
+    if (!result.ok || !result.data) {
+      setSaving(false)
       toast.error(result.errorMessage ?? "Could not save post.")
       return
     }
+    const postId = result.data.id
+
+    if (imageMode === "upload") {
+      if (thumbnailFile) {
+        const up = await uploadDashboardBlogPostThumbnail(postId, thumbnailFile)
+        if (!up.ok) {
+          setSaving(false)
+          toast.error(up.errorMessage ?? "Post saved but thumbnail upload failed.")
+          return
+        }
+      }
+    } else if (hadUploadedThumbnail) {
+      const cleared = await deleteDashboardBlogPostThumbnail(postId)
+      if (!cleared.ok) {
+        setSaving(false)
+        toast.error(cleared.errorMessage ?? "Post saved but could not remove uploaded image.")
+        return
+      }
+    }
+
+    setSaving(false)
     toast.success(editingId ? "Post updated" : "Post created")
     setDialogOpen(false)
+    resetImageUploadState()
     void loadPosts()
   }
 
@@ -336,14 +400,108 @@ export default function DashboardBlogPostsPage() {
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="image_url">Card image URL</Label>
-              <Input
-                id="image_url"
-                value={form.image_url}
-                onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-                placeholder="/images/article-example.jpg"
-              />
+            <div className="grid gap-3 rounded-lg border p-4">
+              <Label>Card thumbnail</Label>
+              <p className="text-xs text-muted-foreground">
+                Shown on the blog listing cards. Upload your own image or paste a URL path.
+              </p>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="radio"
+                    name="card-image-mode"
+                    checked={imageMode === "url"}
+                    onChange={() => setImageMode("url")}
+                  />
+                  Use image URL
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="radio"
+                    name="card-image-mode"
+                    checked={imageMode === "upload"}
+                    onChange={() => setImageMode("upload")}
+                  />
+                  Upload image
+                </label>
+              </div>
+              {imageMode === "url" ? (
+                <div className="grid gap-2">
+                  <Label htmlFor="image_url">Image URL or path</Label>
+                  <Input
+                    id="image_url"
+                    value={form.image_url}
+                    onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                    placeholder="/images/article-example.jpg"
+                  />
+                  {form.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={form.image_url}
+                      alt="Card preview"
+                      className="mt-1 h-28 w-full max-w-xs rounded-md border object-cover"
+                    />
+                  ) : null}
+                </div>
+              ) : (
+                <div className="grid gap-2">
+                  <input
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) setPreviewFromFile(file)
+                    }}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => thumbnailInputRef.current?.click()}
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                      Choose image
+                    </Button>
+                    {thumbnailFile || thumbnailPreview ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 text-muted-foreground"
+                        onClick={() => {
+                          setThumbnailFile(null)
+                          setThumbnailPreview((prev) => {
+                            if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev)
+                            return null
+                          })
+                          if (thumbnailInputRef.current) thumbnailInputRef.current.value = ""
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                        Clear selection
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground">JPEG, PNG, WebP, or GIF — max 5 MB.</p>
+                  {thumbnailPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={thumbnailPreview}
+                      alt="Thumbnail preview"
+                      className="h-32 w-full max-w-sm rounded-md border object-cover"
+                    />
+                  ) : null}
+                  {!thumbnailFile && !thumbnailPreview ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      Pick a file before saving, or switch back to URL mode.
+                    </p>
+                  ) : null}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">

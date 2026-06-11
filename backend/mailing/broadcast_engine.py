@@ -11,6 +11,7 @@ from django.utils import timezone
 from .email_layout import compose_broadcast_html
 from .email_logging import record_outbound_email
 from .models import EmailBroadcast, EmailBroadcastRecipient, NewsletterSubscriber, OutboundEmailLog
+from .smtp_config import outbound_smtp_block_reason
 
 User = get_user_model()
 
@@ -73,6 +74,9 @@ def _dispatch_one(
     body = broadcast.body_text + text_suffix
     inner_html = (broadcast.body_html or "").strip()
     html = ""
+    smtp_block = outbound_smtp_block_reason()
+    if smtp_block:
+        return False, smtp_block
     if inner_html:
         html = compose_broadcast_html(
             headline=broadcast.headline,

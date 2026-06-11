@@ -80,6 +80,10 @@ export type BlogPostRecord = {
   category: string;
   read_time_minutes: number;
   image_url: string;
+  /** Set when a file was uploaded; overrides image_url on the public site. */
+  thumbnail_url?: string | null;
+  /** Effective card image (upload or URL). */
+  card_image_url?: string;
   body: string;
   published_at: string;
   is_featured: boolean;

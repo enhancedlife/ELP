@@ -13,7 +13,13 @@ class BlogPost(models.Model):
     image_url = models.CharField(
         max_length=512,
         default="/images/article-default.jpg",
-        help_text="Path or URL for the card hero image (e.g. /images/article-estradiol.jpg).",
+        help_text="Path or URL for the card hero image when no thumbnail is uploaded.",
+    )
+    thumbnail = models.ImageField(
+        upload_to="blog/thumbnails/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="Uploaded card image; overrides image_url on the public site when set.",
     )
     body = models.TextField(
         blank=True,

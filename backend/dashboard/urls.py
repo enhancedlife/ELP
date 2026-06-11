@@ -15,6 +15,10 @@ urlpatterns = [
     path("projects", views.projects_list),
     path("landing-pages/<int:pk>", views.landing_page_detail),
     path("landing-pages", views.landing_pages_collection),
+    path(
+        "blog-posts/<int:pk>/thumbnail",
+        blog_dashboard_views.blog_post_thumbnail,
+    ),
     path("blog-posts/<int:pk>", blog_dashboard_views.blog_post_detail),
     path("blog-posts", blog_dashboard_views.blog_posts_collection),
     path("sponsors/<int:pk>", views.sponsor_detail),
@@ -65,6 +69,7 @@ urlpatterns = [
         "email/template/test-send",
         mailing_dashboard_views.system_email_layout_test_send,
     ),
+    path("email/delivery-status", mailing_dashboard_views.email_delivery_status),
     path("email/send-logs", mailing_dashboard_views.email_send_logs_collection),
     path("email/template", mailing_dashboard_views.system_email_layout),
     path("email/broadcasts", mailing_dashboard_views.email_broadcasts_collection),

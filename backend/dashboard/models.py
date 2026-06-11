@@ -103,6 +103,22 @@ class MemberProfile(models.Model):
         return f"Profile for user {self.user_id}"
 
 
+class SiteVisit(models.Model):
+    """Public page view recorded from the Next.js site."""
+
+    path = models.CharField(max_length=512, db_index=True)
+    visited_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-visited_at"]
+        indexes = [
+            models.Index(fields=["visited_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.path} @ {self.visited_at:%Y-%m-%d %H:%M}"
+
+
 class DashboardNotificationPreference(models.Model):
     """Per-user notification channel toggles (stored in DB)."""
 

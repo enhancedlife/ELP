@@ -26,6 +26,7 @@ import {
 	getDashboardEmailBroadcast,
 	getDashboardEmailBroadcastRecipients,
 	getDashboardEmailBroadcasts,
+	getDashboardEmailDeliveryStatus,
 	getDashboardEmailTemplate,
 	getDashboardUsers,
 	patchDashboardEmailBroadcast,
@@ -39,6 +40,7 @@ import {
 import type {
 	DashboardEmailBroadcast,
 	DashboardEmailBroadcastRecipient,
+	DashboardEmailDeliveryStatus,
 	DashboardUserRow,
 } from "@/lib/types/dashboard";
 import { EmailSectionNav } from "@/components/dashboard/email-section-nav";
@@ -168,6 +170,9 @@ export default function BulkMailPage() {
 	const [loadingRecipients, setLoadingRecipients] = useState(false);
 	const pollRef = useRef(false);
 	const recipientFetchRef = useRef(0);
+	const [deliveryStatus, setDeliveryStatus] = useState<DashboardEmailDeliveryStatus | null>(
+		null,
+	);
 
 	const loadDrafts = useCallback(async () => {
 		const res = await getDashboardEmailBroadcasts();
@@ -259,6 +264,10 @@ export default function BulkMailPage() {
 	useEffect(() => {
 		void loadUsers();
 		void loadDrafts();
+		void (async () => {
+			const res = await getDashboardEmailDeliveryStatus();
+			if (res.ok && res.data) setDeliveryStatus(res.data);
+		})();
 	}, [loadUsers, loadDrafts]);
 
 	useEffect(() => {
@@ -614,6 +623,21 @@ export default function BulkMailPage() {
 	return (
 		<div className="space-y-8">
 			<EmailSectionNav />
+			{deliveryStatus && !deliveryStatus.smtp_ready ? (
+				<p className="text-sm text-amber-900 dark:text-amber-100 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-lg px-4 py-3">
+					<strong>Email will not be delivered.</strong> {deliveryStatus.message}
+					{deliveryStatus.backend.includes("console") ? (
+						<>
+							{" "}
+							On the live server, copy your SMTP settings from{" "}
+							<code className="rounded bg-muted px-1">backend/.env</code> into the{" "}
+							<strong>root</strong> <code className="rounded bg-muted px-1">.env</code> next to{" "}
+							<code className="rounded bg-muted px-1">docker-compose.yml</code>, then run{" "}
+							<code className="rounded bg-muted px-1">docker compose up -d backend</code>.
+						</>
+					) : null}
+				</p>
+			) : null}
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 				<div>
 					<h2 className="text-3xl font-bold tracking-tight">Bulk mail</h2>

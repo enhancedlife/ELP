@@ -36,6 +36,9 @@ export type DashboardTopSource = {
 };
 
 export type DashboardTopPage = {
+	id: number;
+	slug: string;
+	title: string;
 	page: string;
 	views: string;
 	bounce: string;
@@ -195,6 +198,20 @@ export type DashboardSystemEmailLayout = {
 	template_html: string;
 	layout_config: EmailLayoutConfig;
 	updated_at: string;
+};
+
+export type DashboardEmailDeliveryStatus = {
+	smtp_ready: boolean;
+	backend: string;
+	email_host: string;
+	email_port: number;
+	email_use_tls: boolean;
+	email_use_ssl: boolean;
+	default_from_email: string;
+	email_host_user_set: boolean;
+	email_host_password_set: boolean;
+	debug_mode: boolean;
+	message: string;
 };
 
 export type DashboardEmailBroadcastStatus =

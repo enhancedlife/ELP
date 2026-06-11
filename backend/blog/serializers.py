@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from .image_utils import blog_post_card_image
 from .models import BlogPost
 
 
@@ -17,7 +18,7 @@ def _format_date(dt) -> str:
 class BlogPostPublicSerializer(serializers.ModelSerializer):
     read_time = serializers.SerializerMethodField()
     date = serializers.SerializerMethodField()
-    image = serializers.CharField(source="image_url")
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = BlogPost
@@ -37,6 +38,9 @@ class BlogPostPublicSerializer(serializers.ModelSerializer):
     def get_date(self, obj: BlogPost) -> str:
         return _format_date(obj.published_at)
 
+    def get_image(self, obj: BlogPost) -> str:
+        return blog_post_card_image(obj, self.context.get("request"))
+
 
 class BlogPostDetailSerializer(BlogPostPublicSerializer):
     published_at = serializers.DateTimeField()
@@ -46,6 +50,9 @@ class BlogPostDetailSerializer(BlogPostPublicSerializer):
 
 
 class BlogPostDashboardSerializer(serializers.ModelSerializer):
+    thumbnail_url = serializers.SerializerMethodField()
+    card_image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = BlogPost
         fields = [
@@ -56,6 +63,8 @@ class BlogPostDashboardSerializer(serializers.ModelSerializer):
             "category",
             "read_time_minutes",
             "image_url",
+            "thumbnail_url",
+            "card_image_url",
             "body",
             "published_at",
             "is_featured",
@@ -65,7 +74,25 @@ class BlogPostDashboardSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "thumbnail_url",
+            "card_image_url",
+        ]
         extra_kwargs = {
             "deleted_at": {"required": False, "allow_null": True},
         }
+
+    def get_thumbnail_url(self, obj: BlogPost) -> str | None:
+        if not obj.thumbnail:
+            return None
+        request = self.context.get("request")
+        url = obj.thumbnail.url
+        if request and url.startswith("/"):
+            return request.build_absolute_uri(url)
+        return url
+
+    def get_card_image_url(self, obj: BlogPost) -> str:
+        return blog_post_card_image(obj, self.context.get("request"))

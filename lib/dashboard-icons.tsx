@@ -1,11 +1,13 @@
 import {
 	Activity,
 	CreditCard,
+	Eye,
 	FileText,
 	LayoutList,
 	Minus,
 	TrendingDown,
 	TrendingUp,
+	UserPlus,
 	Users,
 	type LucideIcon,
 } from "lucide-react";
@@ -14,6 +16,9 @@ const byKey: Record<string, LucideIcon> = {
 	pages: FileText,
 	sponsors: CreditCard,
 	users: Users,
+	users_week: UserPlus,
+	users_month: UserPlus,
+	visits: Eye,
 	activity: Activity,
 	draft: LayoutList,
 };

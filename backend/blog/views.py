@@ -32,7 +32,9 @@ def blog_posts_list(request):
             .filter(is_featured=True)
             .order_by("sort_order", "-published_at")[:6]
         )
-        return Response(BlogPostPublicSerializer(qs, many=True).data)
+        return Response(
+            BlogPostPublicSerializer(qs, many=True, context={"request": request}).data
+        )
 
     try:
         page = max(1, int(request.query_params.get("page", "1")))
@@ -72,4 +74,6 @@ def blog_post_by_slug(request, slug: str):
         is_published=True,
         deleted_at__isnull=True,
     )
-    return Response(BlogPostDetailSerializer(post).data)
+    return Response(
+        BlogPostDetailSerializer(post, context={"request": request}).data
+    )

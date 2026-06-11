@@ -33,7 +33,7 @@ import { isDashboardManager } from "@/lib/auth";
 
 const sidebarGroups = [
 	{
-		title: "General",
+		title: "Quick Access",
 		items: [
 			{
 				title: "Dashboard",
@@ -42,9 +42,15 @@ const sidebarGroups = [
 				badge: null,
 			},
 			{
-				title: "Messages",
-				href: "/dashboard/messages",
-				icon: MessageSquare,
+				title: "Blog Posts",
+				href: "/dashboard/blog-posts",
+				icon: FileText,
+				badge: null,
+			},
+			{
+				title: "Bulk Mail",
+				href: "/dashboard/email/bulk",
+				icon: MailPlus,
 				badge: null,
 			},
 			{
@@ -53,17 +59,23 @@ const sidebarGroups = [
 				icon: BarChart3,
 				badge: "New",
 			},
+		],
+	},
+	{
+		title: "General",
+		items: [
+			{
+				title: "Messages",
+				href: "/dashboard/messages",
+				icon: MessageSquare,
+				badge: null,
+			},
 			{
 				title: "Settings",
 				href: "/dashboard/settings",
 				icon: Settings,
 				badge: null,
 			},
-		],
-	},
-	{
-		title: "Pages",
-		items: [
 			{
 				title: "Users",
 				href: "/dashboard/users",
@@ -95,21 +107,9 @@ const sidebarGroups = [
 				badge: null,
 			},
 			{
-				title: "Blog posts",
-				href: "/dashboard/blog-posts",
-				icon: FileText,
-				badge: null,
-			},
-			{
 				title: "Email",
 				href: "/dashboard/email",
 				icon: Mail,
-				badge: null,
-			},
-			{
-				title: "Bulk mail",
-				href: "/dashboard/email/bulk",
-				icon: MailPlus,
 				badge: null,
 			},
 			{

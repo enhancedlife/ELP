@@ -27,6 +27,7 @@ from .models import (
     DashboardNotification,
     DashboardNotificationPreference,
     MemberProfile,
+    SiteVisit,
 )
 from .permissions import DashboardAccess
 from .role_utils import (
@@ -240,18 +241,101 @@ def _landing_base_qs():
     return LandingPage.objects.filter(deleted_at__isnull=True)
 
 
+def _start_of_week(dt=None):
+    now = dt or timezone.now()
+    start = now - timedelta(days=now.weekday())
+    return start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _start_of_month(dt=None):
+    now = dt or timezone.now()
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def _trackable_visit_path(raw) -> str | None:
+    path = (raw or "").strip()
+    if not path or not path.startswith("/") or len(path) > 500:
+        return None
+    lower = path.lower()
+    if lower.startswith("/dashboard") or lower.startswith("/auth/admin"):
+        return None
+    if lower.startswith("/api/") or lower.startswith("/_next/"):
+        return None
+    return path
+
+
+def _metric_trend(current: int, previous: int) -> str:
+    if current > previous:
+        return "up"
+    if current < previous:
+        return "down"
+    return "neutral"
+
+
+def _site_summary_metrics(request):
+    now = timezone.now()
+    week_start = _start_of_week(now)
+    month_start = _start_of_month(now)
+    prev_week_start = week_start - timedelta(days=7)
+    prev_month_start = (month_start - timedelta(days=1)).replace(day=1)
+
+    alive_users = _alive_users_queryset(request)
+    registered_count = alive_users.count()
+    new_users_week = alive_users.filter(date_joined__gte=week_start).count()
+    new_users_month = alive_users.filter(date_joined__gte=month_start).count()
+    prev_week_users = alive_users.filter(
+        date_joined__gte=prev_week_start,
+        date_joined__lt=week_start,
+    ).count()
+    prev_month_users = alive_users.filter(
+        date_joined__gte=prev_month_start,
+        date_joined__lt=month_start,
+    ).count()
+
+    site_visits_total = SiteVisit.objects.count()
+    site_visits_week = SiteVisit.objects.filter(visited_at__gte=week_start).count()
+    prev_week_visits = SiteVisit.objects.filter(
+        visited_at__gte=prev_week_start,
+        visited_at__lt=week_start,
+    ).count()
+
+    return [
+        {
+            "title": "Site visits",
+            "value": str(site_visits_total),
+            "change": f"{site_visits_week} this week",
+            "trend": _metric_trend(site_visits_week, prev_week_visits),
+            "iconKey": "visits",
+        },
+        {
+            "title": "New users this week",
+            "value": str(new_users_week),
+            "change": f"{prev_week_users} prior week",
+            "trend": _metric_trend(new_users_week, prev_week_users),
+            "iconKey": "users_week",
+        },
+        {
+            "title": "New users this month",
+            "value": str(new_users_month),
+            "change": f"{prev_month_users} prior month",
+            "trend": _metric_trend(new_users_month, prev_month_users),
+            "iconKey": "users_month",
+        },
+        {
+            "title": "Registered users",
+            "value": str(registered_count),
+            "change": "active accounts",
+            "trend": "neutral",
+            "iconKey": "users",
+        },
+    ]
+
+
 @api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([DashboardAccess])
-def overview(_request):
+def overview(request):
     base = _landing_base_qs()
-    active_pages = base.filter(is_active=True).count()
-    total_pages = base.count()
-    alive_sponsors = Sponsor.objects.filter(deleted_at__isnull=True)
-    sponsors_active = alive_sponsors.filter(is_active=True).count()
-    sponsors_total = alive_sponsors.count()
-    total_users = _alive_users_queryset(_request).count()
-    staff_users = User.objects.filter(is_staff=True, is_active=True).count()
 
     recent = []
     for lp in base.order_by("-updated_at")[:5]:
@@ -266,80 +350,42 @@ def overview(_request):
 
     stats = [
         {
-            "title": "Active landing pages",
-            "value": str(active_pages),
-            "description": f"{total_pages} total (including drafts)",
-            "trend": "up",
-            "iconKey": "pages",
-        },
-        {
-            "title": "Active sponsors",
-            "value": str(sponsors_active),
-            "description": f"{sponsors_total} sponsor records",
-            "trend": "up",
-            "iconKey": "sponsors",
-        },
-        {
-            "title": "Total users",
-            "value": str(total_users),
-            "description": f"{staff_users} staff accounts",
-            "trend": "neutral",
-            "iconKey": "users",
-        },
-        {
-            "title": "Content updates (7d)",
-            "value": str(
-                base.filter(updated_at__gte=timezone.now() - timedelta(days=7)).count()
-            ),
-            "description": "Landing pages touched this week",
-            "trend": "up",
-            "iconKey": "activity",
-        },
+            "title": m["title"],
+            "value": m["value"],
+            "description": m["change"],
+            "trend": m["trend"],
+            "iconKey": m["iconKey"],
+        }
+        for m in _site_summary_metrics(request)
     ]
 
     return Response({"stats": stats, "activities": recent})
 
 
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def record_site_visit(request):
+    path = _trackable_visit_path(request.data.get("path"))
+    if path is None:
+        return Response({"detail": "Invalid path"}, status=status.HTTP_400_BAD_REQUEST)
+    SiteVisit.objects.create(path=path[:512])
+    return Response({"ok": True}, status=status.HTTP_201_CREATED)
+
+
 @api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([DashboardAccess])
-def analytics(_request):
+def analytics(request):
     base = _landing_base_qs()
-    active_users_display = str(User.objects.filter(is_active=True).count())
     metrics = [
         {
-            "title": "Active landing pages",
-            "value": str(base.filter(is_active=True).count()),
-            "change": "live",
-            "trend": "up",
-            "iconKey": "pages",
-        },
-        {
-            "title": "Registered users",
-            "value": active_users_display,
-            "change": "Django auth",
-            "trend": "neutral",
-            "iconKey": "users",
-        },
-        {
-            "title": "Sponsors (active)",
-            "value": str(
-                Sponsor.objects.filter(
-                    is_active=True,
-                    deleted_at__isnull=True,
-                ).count()
-            ),
-            "change": "catalog",
-            "trend": "up",
-            "iconKey": "sponsors",
-        },
-        {
-            "title": "Draft / inactive pages",
-            "value": str(base.filter(is_active=False).count()),
-            "change": "not public",
-            "trend": "down",
-            "iconKey": "draft",
-        },
+            "title": m["title"],
+            "value": m["value"],
+            "change": m["change"],
+            "trend": m["trend"],
+            "iconKey": m["iconKey"],
+        }
+        for m in _site_summary_metrics(request)
     ]
 
     total_lp = base.count() or 1
@@ -387,6 +433,9 @@ def analytics(_request):
     for lp in base.filter(is_active=True).order_by("sort_order", "-updated_at")[:8]:
         top_pages.append(
             {
+                "id": lp.id,
+                "slug": lp.slug,
+                "title": lp.title,
                 "page": f"/{lp.slug}",
                 "views": "—",
                 "bounce": "—",
@@ -399,7 +448,7 @@ def analytics(_request):
             "metrics": metrics,
             "topSources": top_sources,
             "topPages": top_pages,
-            "chartNote": "Connect an analytics provider for traffic charts.",
+            "chartNote": "Site visits are recorded from public pages on the Next.js site.",
         }
     )
 

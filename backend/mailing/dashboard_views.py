@@ -33,6 +33,7 @@ from .serializers import (
     SystemEmailLayoutSerializer,
 )
 from .smtp_helpers import smtp_failure_user_message
+from .smtp_config import delivery_status_payload, outbound_smtp_block_reason
 
 
 def _parse_audience_payload(
@@ -124,7 +125,17 @@ def _broadcast_response(broadcast: EmailBroadcast, *, http_status=status.HTTP_20
     out = dict(data)
     if broadcast.sent_fail_count > 0 and broadcast.error_summary:
         out["send_warning"] = (broadcast.error_summary or "")[:4000]
+    smtp_block = outbound_smtp_block_reason()
+    if smtp_block:
+        out["delivery_warning"] = smtp_block
     return Response(out, status=http_status)
+
+
+def _require_outbound_smtp() -> Response | None:
+    reason = outbound_smtp_block_reason()
+    if reason:
+        return Response({"detail": reason}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    return None
 
 
 def _truthy_query_param(raw) -> bool:
@@ -141,6 +152,14 @@ def _system_email_layout_row():
         template_html=build_template_from_config(DEFAULT_EMAIL_LAYOUT_CONFIG),
         layout_config=DEFAULT_EMAIL_LAYOUT_CONFIG,
     )
+
+
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([DashboardAccess])
+def email_delivery_status(request):
+    """Whether real SMTP is configured (Docker root .env vs console backend)."""
+    return Response(delivery_status_payload())
 
 
 @api_view(["GET", "PATCH"])
@@ -174,6 +193,9 @@ def system_email_layout_test_send(request):
             },
             status=status.HTTP_403_FORBIDDEN,
         )
+    smtp_err = _require_outbound_smtp()
+    if smtp_err is not None:
+        return smtp_err
     to = (request.data.get("to") or request.data.get("email") or "").strip()
     if not to:
         return Response(
@@ -365,6 +387,9 @@ def email_broadcast_recipients(request, pk):
 @permission_classes([DashboardAccess])
 def email_broadcast_send(request, pk):
     broadcast = get_object_or_404(EmailBroadcast, pk=pk)
+    smtp_err = _require_outbound_smtp()
+    if smtp_err is not None:
+        return smtp_err
     audience, user_ids, manual_emails, err = _parse_audience_payload(request)
 
     if broadcast.status == EmailBroadcast.Status.DRAFT:

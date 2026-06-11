@@ -193,6 +193,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"
+
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
@@ -259,8 +262,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Set variables in the process environment or in backend/.env (see backend/.env.example).
 # If EMAIL_HOST is unset, use the console backend (prints mail to the runserver terminal).
 # Do not default to SMTP against localhost — that causes connection refused and HTTP 500s.
-_email_host = (os.environ.get("EMAIL_HOST") or "").strip()
-_explicit_email_backend = (os.environ.get("EMAIL_BACKEND") or "").strip()
+
+
+def _env_unquoted(key: str) -> str:
+    """Strip one layer of matching quotes (common in .env files)."""
+    val = (os.environ.get(key) or "").strip()
+    if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+        return val[1:-1]
+    return val
+
+
+_email_host = _env_unquoted("EMAIL_HOST")
+_explicit_email_backend = _env_unquoted("EMAIL_BACKEND")
 if _explicit_email_backend:
     EMAIL_BACKEND = _explicit_email_backend
 elif not _email_host:
@@ -269,8 +282,8 @@ else:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = _email_host or "localhost"
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
-EMAIL_HOST_USER = (os.environ.get("EMAIL_HOST_USER") or "").strip()
-EMAIL_HOST_PASSWORD = (os.environ.get("EMAIL_HOST_PASSWORD") or "").strip()
+EMAIL_HOST_USER = _env_unquoted("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = _env_unquoted("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "0") == "1"
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "30"))
@@ -290,10 +303,13 @@ PASSWORD_RESET_SEND_PROBE_FOR_UNKNOWN = (
 )
 
 if EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
-    warnings.warn(
+    msg = (
         "EMAIL_HOST is unset: Django is using the console email backend, so nothing is sent over SMTP. "
         "Set EMAIL_* in the process environment or backend/.env. "
-        "If you use Docker, pass --env-file or inject EMAIL_HOST and credentials at runtime.",
-        RuntimeWarning,
-        stacklevel=1,
+        "If you use Docker, pass variables in the root .env (not backend/.env)."
     )
+    if not DEBUG:
+        import logging
+
+        logging.getLogger(__name__).error(msg)
+    warnings.warn(msg, RuntimeWarning, stacklevel=1)

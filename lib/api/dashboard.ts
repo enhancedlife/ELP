@@ -15,6 +15,7 @@ import type {
 	DashboardEmailBroadcastRecipient,
 	DashboardEmailBroadcastRecipientsResponse,
 	DashboardEmailBroadcastsResponse,
+	DashboardEmailDeliveryStatus,
 	DashboardEmailSendLogsResponse,
 	DashboardLandingPagesResponse,
 	DashboardMessagesInboxResponse,
@@ -352,6 +353,42 @@ export function deleteDashboardBlogPost(id: number) {
 	return mutateDashboardJson<null>("DELETE", `blog-posts/${id}`);
 }
 
+export async function uploadDashboardBlogPostThumbnail(
+	id: number,
+	file: File,
+): Promise<DashboardJsonResult<BlogPostRecord>> {
+	try {
+		const form = new FormData();
+		form.append("thumbnail", file);
+		const res = await fetch(dashboardClientFetchUrl(`blog-posts/${id}/thumbnail`), {
+			method: "POST",
+			headers: dashboardAuthHeaders(),
+			body: form,
+			cache: "no-store",
+		});
+		const text = await res.text();
+		if (!res.ok) {
+			return {
+				ok: false,
+				data: null,
+				status: res.status,
+				errorMessage: parseDashboardApiErrorText(text),
+			};
+		}
+		return {
+			ok: true,
+			data: JSON.parse(text) as BlogPostRecord,
+			status: res.status,
+		};
+	} catch {
+		return { ok: false, data: null, status: null };
+	}
+}
+
+export function deleteDashboardBlogPostThumbnail(id: number) {
+	return mutateDashboardJson<BlogPostRecord>("DELETE", `blog-posts/${id}/thumbnail`);
+}
+
 export function getDashboardNewsletterSubscribers(includeDeleted?: boolean) {
 	const q = includeDeleted === true ? "?include_deleted=1" : "";
 	return fetchDashboardJson<DashboardNewsletterSubscribersResponse>(
@@ -409,6 +446,10 @@ export function getDashboardEmailSendLogs(options?: {
 
 export function getDashboardEmailTemplate() {
 	return fetchDashboardJson<DashboardSystemEmailLayout>("email/template");
+}
+
+export function getDashboardEmailDeliveryStatus() {
+	return fetchDashboardJson<DashboardEmailDeliveryStatus>("email/delivery-status");
 }
 
 import type { EmailLayoutConfig } from "@/lib/email-layout-config";

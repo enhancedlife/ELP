@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
+	deleteDashboardLandingPage,
 	describeDashboardFetchFailure,
 	getDashboardAnalytics,
 } from "@/lib/api/dashboard";
@@ -25,14 +28,18 @@ import {
 	PieChart,
 	Users,
 	DollarSign,
+	Trash2,
 } from "lucide-react";
 
 const metricStyle: Record<
 	string,
 	{ color: string; bg: string }
 > = {
+	visits: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/40" },
+	users_week: { color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-950/40" },
+	users_month: { color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+	users: { color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40" },
 	pages: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/40" },
-	users: { color: "text-blue-600", bg: "bg-blue-50" },
 	sponsors: { color: "text-purple-600", bg: "bg-purple-50" },
 	draft: { color: "text-orange-600", bg: "bg-orange-50" },
 };
@@ -44,32 +51,84 @@ export default function AnalyticsPage() {
 	const [chartNote, setChartNote] = useState<string | null>(null);
 	const [banner, setBanner] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [removingId, setRemovingId] = useState<number | null>(null);
+	const [clearingAll, setClearingAll] = useState(false);
+
+	const reload = useCallback(async () => {
+		setLoading(true);
+		const { ok, data, status } = await getDashboardAnalytics();
+		if (!ok || !data) {
+			setBanner(describeDashboardFetchFailure(status));
+			setMetrics([]);
+			setTopSources([]);
+			setTopPages([]);
+			setChartNote(null);
+		} else {
+			setBanner(null);
+			setMetrics(Array.isArray(data.metrics) ? data.metrics : []);
+			setTopSources(Array.isArray(data.topSources) ? data.topSources : []);
+			setTopPages(Array.isArray(data.topPages) ? data.topPages : []);
+			setChartNote(data.chartNote ?? null);
+		}
+		setLoading(false);
+	}, []);
 
 	useEffect(() => {
-		let cancelled = false;
-		(async () => {
-			setLoading(true);
-			const { ok, data, status } = await getDashboardAnalytics();
-			if (cancelled) return;
-			if (!ok || !data) {
-				setBanner(describeDashboardFetchFailure(status));
-				setMetrics([]);
-				setTopSources([]);
-				setTopPages([]);
-				setChartNote(null);
-			} else {
-				setBanner(null);
-				setMetrics(Array.isArray(data.metrics) ? data.metrics : []);
-				setTopSources(Array.isArray(data.topSources) ? data.topSources : []);
-				setTopPages(Array.isArray(data.topPages) ? data.topPages : []);
-				setChartNote(data.chartNote ?? null);
-			}
-			setLoading(false);
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, []);
+		void reload();
+	}, [reload]);
+
+	async function handleRemovePage(page: DashboardTopPage) {
+		const label = page.title || page.page;
+		if (
+			!window.confirm(
+				`Remove "${label}" from this list? The landing page will be archived and hidden from the public site. You can restore it from FAQ pages.`,
+			)
+		) {
+			return;
+		}
+		setRemovingId(page.id);
+		const res = await deleteDashboardLandingPage(page.id);
+		setRemovingId(null);
+		if (!res.ok) {
+			toast.error("Could not remove page", {
+				description: res.errorMessage || `HTTP ${res.status}`,
+			});
+			return;
+		}
+		toast.success("Page archived");
+		await reload();
+	}
+
+	async function handleClearAllPages() {
+		if (topPages.length === 0) return;
+		if (
+			!window.confirm(
+				`Archive all ${topPages.length} pages shown here? They will be removed from the public site until restored from FAQ pages.`,
+			)
+		) {
+			return;
+		}
+		setClearingAll(true);
+		let removed = 0;
+		let failed = 0;
+		for (const page of topPages) {
+			const res = await deleteDashboardLandingPage(page.id);
+			if (res.ok) removed += 1;
+			else failed += 1;
+		}
+		setClearingAll(false);
+		if (removed > 0) {
+			toast.success(
+				removed === 1 ? "1 page archived" : `${removed} pages archived`,
+			);
+		}
+		if (failed > 0) {
+			toast.error(
+				failed === 1 ? "1 page could not be removed" : `${failed} pages could not be removed`,
+			);
+		}
+		await reload();
+	}
 
 	return (
 		<div className="space-y-6">
@@ -151,7 +210,7 @@ export default function AnalyticsPage() {
 										{metric.change}
 									</span>
 									<span className="text-muted-foreground ml-1">
-										vs. baseline
+										{metric.title === "Registered users" ? "total" : "vs prior period"}
 									</span>
 								</div>
 							</CardContent>
@@ -276,8 +335,33 @@ export default function AnalyticsPage() {
 					</Card>
 
 					<Card>
-						<CardHeader>
-							<CardTitle>Top published pages</CardTitle>
+						<CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+							<div>
+								<CardTitle>Top published pages</CardTitle>
+								<p className="text-xs text-muted-foreground mt-1">
+									Active landing pages from the CMS. Remove unwanted entries here or manage them on{" "}
+									<Link
+										href="/dashboard/faq-pages"
+										className="text-primary underline-offset-4 hover:underline"
+									>
+										FAQ pages
+									</Link>
+									.
+								</p>
+							</div>
+							{topPages.length > 0 ? (
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="shrink-0 text-destructive hover:text-destructive"
+									disabled={loading || clearingAll || removingId !== null}
+									onClick={() => void handleClearAllPages()}
+								>
+									<Trash2 className="h-4 w-4 mr-1.5" />
+									{clearingAll ? "Removing…" : "Remove all"}
+								</Button>
+							) : null}
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-3">
@@ -288,17 +372,31 @@ export default function AnalyticsPage() {
 								) : null}
 								{topPages.map((page) => (
 									<div
-										key={page.page}
-										className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+										key={page.id}
+										className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
 									>
 										<div className="flex-1 min-w-0">
-											<p className="text-sm font-medium truncate">{page.page}</p>
+											<p className="text-sm font-medium truncate">
+												{page.title || page.page}
+											</p>
 											<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+												<span className="truncate">{page.page}</span>
 												<span>{page.views} views</span>
 												<span>{page.bounce} bounce</span>
 												<span>updated {page.time}</span>
 											</div>
 										</div>
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="shrink-0 text-muted-foreground hover:text-destructive"
+											disabled={loading || clearingAll || removingId === page.id}
+											aria-label={`Remove ${page.title || page.page}`}
+											onClick={() => void handleRemovePage(page)}
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
 									</div>
 								))}
 							</div>

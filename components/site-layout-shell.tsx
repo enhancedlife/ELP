@@ -1,6 +1,7 @@
 "use client"
 
 import { usePathname } from "next/navigation"
+import { SiteVisitTracker } from "@/components/site-visit-tracker"
 
 export function SiteLayoutShell({
   header,
@@ -16,6 +17,7 @@ export function SiteLayoutShell({
 
   return (
     <>
+      {!hideSiteChrome ? <SiteVisitTracker /> : null}
       {!hideSiteChrome ? header : null}
       {children}
       {!hideSiteChrome ? footer : null}
