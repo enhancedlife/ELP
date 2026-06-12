@@ -7,43 +7,39 @@ import './globals.css'
 import { ResourcesDropdown } from '@/components/resources-dropdown'
 import { MobileNav } from '@/components/mobile-nav'
 import { ClientHeaderAuth } from '@/components/client-header-auth'
+import { SiteLogo } from '@/components/site-logo'
 import { MAIN_NAV_LINKS } from '@/lib/site-nav'
 import { SiteLayoutShell } from '@/components/site-layout-shell'
 import { ThemeProvider } from '@/components/theme-provider'
+import {
+  brandingMetadataIcons,
+  fetchSiteBrandingServer,
+  siteDisplayName,
+} from '@/lib/site-branding'
+import type { SiteBranding } from '@/lib/types'
 
 const oswald = Oswald({ subsets: ["latin"], variable: '--font-oswald' })
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' })
 
-export const metadata: Metadata = {
-  title: 'Your Enhanced Life',
-  description: 'A community focused on peptides, TRT/HRT, recovery, longevity, and performance optimization.',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await fetchSiteBrandingServer()
+  const siteName = siteDisplayName(branding)
+  return {
+    title: siteName,
+    description: 'A community focused on peptides, TRT/HRT, recovery, longevity, and performance optimization.',
+    generator: 'v0.app',
+    icons: brandingMetadataIcons(branding),
+  }
 }
 
-function Header() {
+function Header({ branding }: { branding: SiteBranding }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-md border-b border-white/10">
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="text-xl font-heading font-bold text-white hover:text-green-400 transition uppercase tracking-wider">
-          Your Enhanced Life
-        </Link>
+        <SiteLogo
+          branding={branding}
+          textClassName="text-xl text-white"
+        />
         
         <nav className="hidden md:flex items-center gap-8">
           <ResourcesDropdown />
@@ -83,20 +79,23 @@ function Header() {
           <ClientHeaderAuth />
         </nav>
 
-        <MobileNav />
+        <MobileNav branding={branding} />
       </div>
     </header>
   )
 }
 
-function Footer() {
+function Footer({ branding }: { branding: SiteBranding }) {
+  const siteName = siteDisplayName(branding)
   return (
     <footer className="border-t border-white/10 py-10 px-6 bg-black/40 backdrop-blur-sm">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
-          <Link href="/" className="text-2xl font-heading font-bold hover:text-green-400 transition uppercase tracking-wider">
-            Your Enhanced Life
-          </Link>
+          <SiteLogo
+            branding={branding}
+            textClassName="text-2xl text-white"
+            imageClassName="max-h-10"
+          />
           <p className="text-gray-400 mt-2">
             Enhance. Optimize. Thrive.
           </p>
@@ -137,18 +136,20 @@ function Footer() {
         </div>
       </div>
       <div className="max-w-6xl mx-auto mt-8 pt-8 border-t border-white/10 text-center text-gray-500 text-sm">
-        <p>&copy; {new Date().getFullYear()} Your Enhanced Life. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} {siteName}. All rights reserved.</p>
         <p className="mt-2">Educational content only. Not medical advice.</p>
       </div>
     </footer>
   )
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const branding = await fetchSiteBrandingServer()
+
   return (
     <html 
       lang="en" 
@@ -163,7 +164,7 @@ export default function RootLayout({
           disableTransitionOnChange
           storageKey="elp-theme"
         >
-          <SiteLayoutShell header={<Header />} footer={<Footer />}>
+          <SiteLayoutShell header={<Header branding={branding} />} footer={<Footer branding={branding} />}>
             {children}
           </SiteLayoutShell>
           <Toaster theme="dark" position="top-center" richColors />

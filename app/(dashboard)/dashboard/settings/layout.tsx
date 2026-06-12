@@ -78,6 +78,10 @@ const sidebarNavItems = [
 		href: "/dashboard/settings/display",
 	},
 	{
+		title: "Site branding",
+		href: "/dashboard/settings/branding",
+	},
+	{
 		title: "API Keys",
 		href: "/dashboard/settings/api-keys",
 	},

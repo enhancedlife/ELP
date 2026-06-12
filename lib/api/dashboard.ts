@@ -3,7 +3,7 @@ import {
 	dashboardAuthHeaders,
 	dashboardAuthHeadersJson,
 } from "@/lib/auth";
-import type { LandingPageRecord, PartnersPageSettings, BlogPostRecord } from "@/lib/types";
+import type { LandingPageRecord, PartnersPageSettings, BlogPostRecord, SiteBranding } from "@/lib/types";
 import type {
 	DashboardAnalyticsResponse,
 	DashboardBlogPostsResponse,
@@ -736,4 +736,61 @@ export async function importDashboardDatabaseBackup(
 			errorMessage: "Network error — could not import database backup.",
 		};
 	}
+}
+
+export function getDashboardSiteBranding() {
+	return fetchDashboardJson<SiteBranding>("site-branding");
+}
+
+export function patchDashboardSiteBranding(body: { site_name?: string }) {
+	return mutateDashboardJson<SiteBranding>("PATCH", "site-branding", body);
+}
+
+async function uploadDashboardBrandingAsset(
+	path: string,
+	field: string,
+	file: File,
+): Promise<DashboardJsonResult<SiteBranding>> {
+	try {
+		const form = new FormData();
+		form.append(field, file);
+		const res = await fetch(dashboardClientFetchUrl(path), {
+			method: "POST",
+			headers: dashboardAuthHeaders(),
+			body: form,
+			cache: "no-store",
+		});
+		const text = await res.text();
+		if (!res.ok) {
+			return {
+				ok: false,
+				data: null,
+				status: res.status,
+				errorMessage: parseDashboardApiErrorText(text),
+			};
+		}
+		return {
+			ok: true,
+			data: JSON.parse(text) as SiteBranding,
+			status: res.status,
+		};
+	} catch {
+		return { ok: false, data: null, status: null };
+	}
+}
+
+export function uploadDashboardSiteLogo(file: File) {
+	return uploadDashboardBrandingAsset("site-branding/logo", "logo", file);
+}
+
+export function uploadDashboardSiteFavicon(file: File) {
+	return uploadDashboardBrandingAsset("site-branding/favicon", "favicon", file);
+}
+
+export function deleteDashboardSiteLogo() {
+	return mutateDashboardJson<SiteBranding>("DELETE", "site-branding/logo");
+}
+
+export function deleteDashboardSiteFavicon() {
+	return mutateDashboardJson<SiteBranding>("DELETE", "site-branding/favicon");
 }

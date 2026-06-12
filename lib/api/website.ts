@@ -2,8 +2,10 @@ import type {
   LandingPage,
   LandingPageSummary,
   PartnersPageSettings,
+  SiteBranding,
   Sponsor,
 } from '@/lib/types';
+import { fetchSiteBranding } from '@/lib/site-branding';
 
 async function safeFetchJson<T>(input: string, init?: RequestInit): Promise<T | null> {
   try {
@@ -18,6 +20,10 @@ async function safeFetchJson<T>(input: string, init?: RequestInit): Promise<T | 
   } catch {
     return null;
   }
+}
+
+export async function getSiteBranding(): Promise<SiteBranding> {
+  return fetchSiteBranding();
 }
 
 export async function listLandingPages(options?: { faqOnly?: boolean }): Promise<LandingPageSummary[]> {

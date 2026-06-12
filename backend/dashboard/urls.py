@@ -3,10 +3,14 @@ from django.urls import path
 from mailing import dashboard_views as mailing_dashboard_views
 
 from blog import dashboard_views as blog_dashboard_views
+from . import branding_views
 from . import views
 from . import db_backup_views
 
 urlpatterns = [
+    path("site-branding/favicon", branding_views.site_branding_favicon),
+    path("site-branding/logo", branding_views.site_branding_logo),
+    path("site-branding", branding_views.site_branding_dashboard),
     path("overview", views.overview),
     path("analytics", views.analytics),
     path("users/bulk", views.users_bulk),

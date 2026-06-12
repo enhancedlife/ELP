@@ -131,3 +131,10 @@ export type Sponsor = {
   deleted_at?: string | null;
 };
 
+export type SiteBranding = {
+  site_name: string;
+  logo_url: string;
+  favicon_url: string;
+  updated_at?: string;
+};
+

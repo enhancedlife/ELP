@@ -119,6 +119,22 @@ class SiteVisit(models.Model):
         return f"{self.path} @ {self.visited_at:%Y-%m-%d %H:%M}"
 
 
+class SiteBrandingSettings(models.Model):
+    """Singleton (pk=1): public site logo, favicon, and display name."""
+
+    site_name = models.CharField(max_length=255, default="Your Enhanced Life")
+    logo = models.ImageField(upload_to="branding/logo/", blank=True, null=True)
+    favicon = models.ImageField(upload_to="branding/favicon/", blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Site branding"
+        verbose_name_plural = "Site branding"
+
+    def __str__(self) -> str:
+        return self.site_name or "Site branding"
+
+
 class DashboardNotificationPreference(models.Model):
     """Per-user notification channel toggles (stored in DB)."""
 

@@ -21,6 +21,7 @@ from django.views.static import serve as media_serve
 
 from blog.views import blog_post_by_slug, blog_posts_list
 from content.views import landing_page_by_slug, landing_pages_list
+from dashboard.branding_views import site_branding_public
 from dashboard.views import backend_root, health, record_site_visit
 from mailing.contact_views import contact_submit
 from mailing.public_views import newsletter_subscribe, newsletter_unsubscribe
@@ -30,6 +31,7 @@ urlpatterns = [
     path('', backend_root),
     path('admin/', admin.site.urls),
     path('api/health', health),
+    path('api/site-branding', site_branding_public),
     path('api/analytics/visit', record_site_visit),
     path('api/auth/', include('dashboard.auth_urls')),
     path('api/portal/', include('dashboard.portal_urls')),

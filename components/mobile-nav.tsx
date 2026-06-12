@@ -4,6 +4,8 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { ClientMobileAuth } from "@/components/client-header-auth"
+import { SiteLogo } from "@/components/site-logo"
+import type { SiteBranding } from "@/lib/types"
 import {
   MAIN_NAV_LINKS,
   RESOURCES_HUB_HREF,
@@ -33,7 +35,7 @@ const SOCIAL_LINKS = [
   },
 ] as const
 
-export function MobileNav() {
+export function MobileNav({ branding }: { branding?: SiteBranding | null }) {
   const [open, setOpen] = useState(false)
   const [resourcesOpen, setResourcesOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -66,13 +68,11 @@ export function MobileNav() {
             aria-label="Mobile navigation"
           >
             <div className="flex shrink-0 items-center justify-between border-b border-white/10 p-6">
-              <Link
-                href="/"
-                className="text-xl font-heading font-bold uppercase tracking-wider text-white"
+              <SiteLogo
+                branding={branding}
+                textClassName="text-xl text-white"
                 onClick={closeMenu}
-              >
-                Your Enhanced Life
-              </Link>
+              />
               <button
                 type="button"
                 aria-label="Close menu"

@@ -38,6 +38,7 @@ const nextConfig = {
         { source: "/api/contact", destination: `${origin}/api/contact` },
         { source: "/api/sponsors", destination: `${origin}/api/sponsors` },
         { source: "/api/blog/:path*", destination: `${origin}/api/blog/:path*` },
+        { source: "/api/site-branding", destination: `${origin}/api/site-branding` },
         { source: "/api/health", destination: `${origin}/api/health` },
         { source: "/api/analytics/visit", destination: `${origin}/api/analytics/visit` },
         { source: "/media/:path*", destination: `${origin}/media/:path*` },
