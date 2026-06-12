@@ -6,6 +6,8 @@ import {
 import type { LandingPageRecord, PartnersPageSettings, BlogPostRecord, SiteBranding } from "@/lib/types";
 import type {
 	DashboardAnalyticsResponse,
+	DashboardBlogComment,
+	DashboardBlogCommentsResponse,
 	DashboardBlogPostsResponse,
 	DashboardCalendarResponse,
 	DashboardConversationDetailResponse,
@@ -793,4 +795,34 @@ export function deleteDashboardSiteLogo() {
 
 export function deleteDashboardSiteFavicon() {
 	return mutateDashboardJson<SiteBranding>("DELETE", "site-branding/favicon");
+}
+
+export function getDashboardBlogComments(options?: {
+	status?: "pending" | "approved" | "rejected";
+	postId?: number;
+	limit?: number;
+}) {
+	const params = new URLSearchParams();
+	if (options?.status) params.set("status", options.status);
+	if (options?.postId != null) params.set("post_id", String(options.postId));
+	if (options?.limit != null) params.set("limit", String(options.limit));
+	const q = params.toString();
+	return fetchDashboardJson<DashboardBlogCommentsResponse>(
+		q ? `blog-comments?${q}` : "blog-comments",
+	);
+}
+
+export function getDashboardBlogCommentsPendingCount() {
+	return fetchDashboardJson<{ pending_count: number }>("blog-comments?count_only=1");
+}
+
+export function patchDashboardBlogComment(
+	id: number,
+	body: { status: "pending" | "approved" | "rejected" },
+) {
+	return mutateDashboardJson<DashboardBlogComment>("PATCH", `blog-comments/${id}`, body);
+}
+
+export function deleteDashboardBlogComment(id: number) {
+	return mutateDashboardJson<null>("DELETE", `blog-comments/${id}`);
 }

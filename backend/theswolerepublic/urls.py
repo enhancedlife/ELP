@@ -20,6 +20,7 @@ from django.urls import include, path, re_path
 from django.views.static import serve as media_serve
 
 from blog.views import blog_post_by_slug, blog_posts_list
+from blog.comment_views import blog_post_comments
 from content.views import landing_page_by_slug, landing_pages_list
 from dashboard.branding_views import site_branding_public
 from dashboard.views import backend_root, health, record_site_visit
@@ -42,6 +43,7 @@ urlpatterns = [
     path('api/newsletter/unsubscribe', newsletter_unsubscribe),
     path('api/contact', contact_submit),
     path('api/blog/posts', blog_posts_list),
+    path('api/blog/posts/<str:slug>/comments', blog_post_comments),
     path('api/blog/posts/<str:slug>', blog_post_by_slug),
     path('api/dashboard/', include('dashboard.urls')),
 ]

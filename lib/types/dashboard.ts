@@ -179,6 +179,27 @@ export type DashboardBlogPostsResponse = {
 	posts: BlogPostRecord[];
 };
 
+export type DashboardBlogCommentStatus = "pending" | "approved" | "rejected";
+
+export type DashboardBlogComment = {
+	id: number;
+	post_id: number;
+	post_slug: string;
+	post_title: string;
+	author_id: number;
+	author_name: string;
+	author_email: string;
+	body: string;
+	status: DashboardBlogCommentStatus;
+	created_at: string;
+	updated_at: string;
+};
+
+export type DashboardBlogCommentsResponse = {
+	comments: DashboardBlogComment[];
+	pending_count: number;
+};
+
 export type DashboardNewsletterSubscriber = {
 	id: number;
 	email: string;

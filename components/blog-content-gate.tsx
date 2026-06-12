@@ -7,6 +7,8 @@ import { AUTH_SESSION_CHANGE_EVENT, fetchAuthUser } from "@/lib/auth"
 
 interface BlogContentGateProps {
   children: React.ReactNode
+  /** Shown below the article for all visitors (e.g. public comments). */
+  footer?: React.ReactNode
   title: string
   category: string
   readTime: string
@@ -16,6 +18,7 @@ interface BlogContentGateProps {
 
 export function BlogContentGate({
   children,
+  footer,
   title,
   category,
   readTime,
@@ -119,6 +122,8 @@ export function BlogContentGate({
               </div>
             </div>
           )}
+
+          {footer ? <div className="mt-12">{footer}</div> : null}
         </div>
       </article>
     </main>

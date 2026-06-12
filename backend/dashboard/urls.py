@@ -3,6 +3,7 @@ from django.urls import path
 from mailing import dashboard_views as mailing_dashboard_views
 
 from blog import dashboard_views as blog_dashboard_views
+from blog import dashboard_comment_views as blog_dashboard_comment_views
 from . import branding_views
 from . import views
 from . import db_backup_views
@@ -25,6 +26,8 @@ urlpatterns = [
     ),
     path("blog-posts/<int:pk>", blog_dashboard_views.blog_post_detail),
     path("blog-posts", blog_dashboard_views.blog_posts_collection),
+    path("blog-comments/<int:pk>", blog_dashboard_comment_views.blog_comment_detail),
+    path("blog-comments", blog_dashboard_comment_views.blog_comments_collection),
     path("sponsors/<int:pk>", views.sponsor_detail),
     path("sponsors", views.sponsors_collection),
     path("partners-page", views.partners_page_settings),

@@ -63,6 +63,18 @@ export type BlogPostDetail = BlogPostSummary & {
   published_at?: string;
 };
 
+export type BlogCommentPublic = {
+  id: number;
+  body: string;
+  author_name: string;
+  created_at: string;
+  is_mine: boolean;
+};
+
+export type BlogCommentsResponse = {
+  comments: BlogCommentPublic[];
+};
+
 export type BlogArchiveResponse = {
   count: number;
   page: number;

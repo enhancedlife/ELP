@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { ExternalLink, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react"
+import { ExternalLink, ImagePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,6 +38,7 @@ import {
   deleteDashboardBlogPost,
   deleteDashboardBlogPostThumbnail,
   describeDashboardFetchFailure,
+  getDashboardBlogCommentsPendingCount,
   getDashboardBlogPosts,
   patchDashboardBlogPost,
   postDashboardBlogPost,
@@ -95,6 +96,7 @@ export default function DashboardBlogPostsPage() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
   const [hadUploadedThumbnail, setHadUploadedThumbnail] = useState(false)
+  const [pendingComments, setPendingComments] = useState(0)
   const thumbnailInputRef = useRef<HTMLInputElement>(null)
 
   function resetImageUploadState() {
@@ -130,6 +132,15 @@ export default function DashboardBlogPostsPage() {
   useEffect(() => {
     void loadPosts()
   }, [loadPosts])
+
+  useEffect(() => {
+    void (async () => {
+      const res = await getDashboardBlogCommentsPendingCount()
+      if (res.ok && res.data && typeof res.data.pending_count === "number") {
+        setPendingComments(res.data.pending_count)
+      }
+    })()
+  }, [])
 
   function openCreate() {
     setEditingId(null)
@@ -247,10 +258,23 @@ export default function DashboardBlogPostsPage() {
             Manage articles shown on the public blog listing and member-gated post pages.
           </p>
         </div>
-        <Button type="button" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add post
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/blog-posts/comments">
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Comments
+              {pendingComments > 0 ? (
+                <Badge variant="secondary" className="ml-2">
+                  {pendingComments} pending
+                </Badge>
+              ) : null}
+            </Link>
+          </Button>
+          <Button type="button" onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add post
+          </Button>
+        </div>
       </div>
 
       {banner ? (
