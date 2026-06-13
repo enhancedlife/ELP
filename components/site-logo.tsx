@@ -27,14 +27,18 @@ export function SiteLogo({
 
 	if (showImage) {
 		return (
-			<Link href="/" onClick={onClick} className={cn("inline-flex items-center", className)}>
+			<Link href="/" onClick={onClick} className={cn("inline-flex items-center shrink-0", className)}>
 				<Image
 					src={logoUrl}
 					alt={name}
-					width={200}
-					height={48}
+					width={320}
+					height={80}
+					priority
 					unoptimized
-					className={cn("h-8 w-auto max-w-[200px] object-contain object-left", imageClassName)}
+					className={cn(
+						"h-12 w-auto max-w-[220px] sm:h-14 sm:max-w-[280px] md:max-w-[320px] object-contain object-left",
+						imageClassName,
+					)}
 				/>
 			</Link>
 		);
