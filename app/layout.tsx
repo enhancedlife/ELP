@@ -96,9 +96,6 @@ function Footer({ branding }: { branding: SiteBranding }) {
             textClassName="text-2xl text-white"
             imageClassName="h-[4.5rem] sm:h-24 max-w-[380px]"
           />
-          <p className="text-gray-400 mt-2">
-            Enhance. Optimize. Thrive.
-          </p>
         </div>
 
         <div className="flex gap-6 text-gray-300">
