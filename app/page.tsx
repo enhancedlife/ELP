@@ -90,7 +90,7 @@ export default function HomePage() {
       <section className="py-20 px-6 max-w-6xl mx-auto">
         <div className="text-center">
           <h2 className="text-4xl font-heading font-bold uppercase tracking-wide">
-            Enhance. Optimize. Thrive.
+            learn. improve. thrive.
           </h2>
 
           <p className="mt-6 text-gray-300 text-lg max-w-3xl mx-auto">
