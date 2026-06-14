@@ -77,6 +77,7 @@ const emptyForm = {
   published_at: toDatetimeLocalValue(new Date().toISOString()),
   is_featured: false,
   is_published: true,
+  is_public: false,
   sort_order: 0,
 }
 
@@ -118,7 +119,7 @@ export default function DashboardBlogPostsPage() {
 
   const loadPosts = useCallback(async () => {
     setLoading(true)
-    const { ok, data, status } = await getDashboardBlogPosts({ includeDeleted: showArchived })
+    const { ok, data, status } = await getDashboardBlogPosts({ archivedOnly: showArchived })
     if (!ok || !data) {
       setBanner(describeDashboardFetchFailure(status))
       setPosts([])
@@ -164,6 +165,7 @@ export default function DashboardBlogPostsPage() {
       published_at: toDatetimeLocalValue(p.published_at),
       is_featured: p.is_featured,
       is_published: p.is_published,
+      is_public: p.is_public ?? false,
       sort_order: p.sort_order ?? 0,
     })
     const thumb = p.thumbnail_url?.trim() || null
@@ -238,6 +240,39 @@ export default function DashboardBlogPostsPage() {
     void loadPosts()
   }
 
+  async function handleTogglePublished(p: BlogPostRecord) {
+    const next = !p.is_published
+    const res = await patchDashboardBlogPost(p.id, { is_published: next })
+    if (!res.ok) {
+      toast.error("Could not update status", { description: res.errorMessage })
+      return
+    }
+    toast.success(
+      next ? "Post published — visible on the site" : "Post moved to draft — hidden from the site",
+    )
+    void loadPosts()
+  }
+
+  async function handleTogglePublic(p: BlogPostRecord) {
+    const res = await patchDashboardBlogPost(p.id, { is_public: !p.is_public })
+    if (!res.ok) {
+      toast.error("Could not update visibility", { description: res.errorMessage })
+      return
+    }
+    toast.success(p.is_public ? "Post is now member-only" : "Post is now public")
+    void loadPosts()
+  }
+
+  async function handleRestore(id: number) {
+    const res = await patchDashboardBlogPost(id, { deleted_at: null })
+    if (!res.ok) {
+      toast.error("Could not restore post", { description: res.errorMessage })
+      return
+    }
+    toast.success("Post restored")
+    void loadPosts()
+  }
+
   async function handleDelete(id: number) {
     if (!confirm("Archive this blog post?")) return
     const result = await deleteDashboardBlogPost(id)
@@ -285,17 +320,19 @@ export default function DashboardBlogPostsPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>All posts</CardTitle>
+          <CardTitle>{showArchived ? "Archived posts" : "Active posts"}</CardTitle>
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <Switch checked={showArchived} onCheckedChange={setShowArchived} />
-            Show archived
+            Show archived only
           </label>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : posts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No blog posts yet. Create one to populate /blog.</p>
+            <p className="text-sm text-muted-foreground">
+              {showArchived ? "No archived posts." : "No blog posts yet. Create one to populate /blog."}
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -303,6 +340,7 @@ export default function DashboardBlogPostsPage() {
                   <TableHead>Title</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Featured</TableHead>
+                  <TableHead>Visibility</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -320,11 +358,30 @@ export default function DashboardBlogPostsPage() {
                     </TableCell>
                     <TableCell>
                       {p.deleted_at ? (
-                        <Badge variant="outline">Archived</Badge>
+                        "—"
                       ) : p.is_published ? (
-                        <Badge>Published</Badge>
+                        p.is_public ? (
+                          <Badge className="bg-green-600 hover:bg-green-600">Public</Badge>
+                        ) : (
+                          <Badge variant="outline">Members only</Badge>
+                        )
                       ) : (
-                        <Badge variant="outline">Draft</Badge>
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {p.deleted_at ? (
+                        <Badge variant="outline">Archived</Badge>
+                      ) : (
+                        <label className="flex items-center gap-2 text-sm">
+                          <Switch
+                            checked={p.is_published}
+                            onCheckedChange={() => void handleTogglePublished(p)}
+                          />
+                          <span className="whitespace-nowrap text-muted-foreground">
+                            {p.is_published ? "Published" : "Draft"}
+                          </span>
+                        </label>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -336,14 +393,27 @@ export default function DashboardBlogPostsPage() {
                             </Link>
                           </Button>
                         ) : null}
+                        {!p.deleted_at && p.is_published ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void handleTogglePublic(p)}
+                          >
+                            {p.is_public ? "Make private" : "Make public"}
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        {!p.deleted_at ? (
+                        {p.deleted_at ? (
+                          <Button variant="outline" size="sm" onClick={() => void handleRestore(p.id)}>
+                            Restore
+                          </Button>
+                        ) : (
                           <Button variant="ghost" size="icon" onClick={() => void handleDelete(p.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
-                        ) : null}
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -548,20 +618,35 @@ export default function DashboardBlogPostsPage() {
               </div>
             </div>
             <BlogBodyEditor blocks={bodyBlocks} onChange={setBodyBlocks} />
-            <div className="flex flex-wrap gap-6">
+            <div className="space-y-3 rounded-lg border p-4">
+              <Label>Publication & visibility</Label>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={form.is_published}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, is_published: v }))}
+                />
+                <span>
+                  {form.is_published
+                    ? "Published — visible on the site"
+                    : "Draft — hidden until published"}
+                </span>
+              </label>
+              <label
+                className={`flex items-center gap-2 text-sm ${form.is_published ? "" : "opacity-50"}`}
+              >
+                <Switch
+                  checked={form.is_public}
+                  disabled={!form.is_published}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, is_public: v }))}
+                />
+                Public (no login required)
+              </label>
               <label className="flex items-center gap-2 text-sm">
                 <Switch
                   checked={form.is_featured}
                   onCheckedChange={(v) => setForm((f) => ({ ...f, is_featured: v }))}
                 />
                 Featured on /blog
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch
-                  checked={form.is_published}
-                  onCheckedChange={(v) => setForm((f) => ({ ...f, is_published: v }))}
-                />
-                Published
               </label>
             </div>
           </div>

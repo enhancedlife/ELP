@@ -16,8 +16,8 @@ from .serializers import BlogPostDashboardSerializer
 
 def _dashboard_qs(request):
     qs = BlogPost.objects.all().order_by("-published_at", "sort_order")
-    if _truthy_query_param(request.query_params.get("include_deleted")):
-        return qs
+    if _truthy_query_param(request.query_params.get("archived_only")):
+        return qs.filter(deleted_at__isnull=False)
     return qs.filter(deleted_at__isnull=True)
 
 

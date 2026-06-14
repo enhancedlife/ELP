@@ -94,7 +94,7 @@ function Footer({ branding }: { branding: SiteBranding }) {
           <SiteLogo
             branding={branding}
             textClassName="text-2xl text-white"
-            imageClassName="h-16 sm:h-20 max-w-[340px]"
+            imageClassName="h-[4.5rem] sm:h-24 max-w-[380px]"
           />
           <p className="text-gray-400 mt-2">
             Enhance. Optimize. Thrive.

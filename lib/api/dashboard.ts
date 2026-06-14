@@ -323,9 +323,12 @@ export function deleteDashboardLandingPage(id: number) {
 	return mutateDashboardJson<null>("DELETE", `landing-pages/${id}`);
 }
 
-export function getDashboardBlogPosts(options?: { includeDeleted?: boolean; featuredOnly?: boolean }) {
+export function getDashboardBlogPosts(options?: {
+	archivedOnly?: boolean;
+	featuredOnly?: boolean;
+}) {
 	const params = new URLSearchParams();
-	if (options?.includeDeleted === true) params.set("include_deleted", "1");
+	if (options?.archivedOnly === true) params.set("archived_only", "1");
 	if (options?.featuredOnly === true) params.set("featured_only", "1");
 	const q = params.toString();
 	return fetchDashboardJson<DashboardBlogPostsResponse>(

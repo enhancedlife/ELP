@@ -21,9 +21,11 @@ import type { BlogCommentPublic } from "@/lib/types";
 
 type BlogCommentsSectionProps = {
 	slug: string;
+	/** When true, comments are hidden until the visitor signs in. */
+	membersOnly?: boolean;
 };
 
-export function BlogCommentsSection({ slug }: BlogCommentsSectionProps) {
+export function BlogCommentsSection({ slug, membersOnly = false }: BlogCommentsSectionProps) {
 	const pathname = usePathname();
 	const [comments, setComments] = useState<BlogCommentPublic[]>([]);
 	const [user, setUser] = useState<AuthUser | null>(null);
@@ -33,14 +35,17 @@ export function BlogCommentsSection({ slug }: BlogCommentsSectionProps) {
 
 	const reload = useCallback(async () => {
 		setLoading(true);
-		const [list, session] = await Promise.all([
-			getBlogPostComments(slug),
-			fetchAuthUser(),
-		]);
-		setComments(list);
+		const session = await fetchAuthUser();
 		setUser(session);
+		if (membersOnly && !session) {
+			setComments([]);
+			setLoading(false);
+			return;
+		}
+		const list = await getBlogPostComments(slug);
+		setComments(list);
 		setLoading(false);
-	}, [slug]);
+	}, [slug, membersOnly]);
 
 	useEffect(() => {
 		void reload();
@@ -79,6 +84,27 @@ export function BlogCommentsSection({ slug }: BlogCommentsSectionProps) {
 	}
 
 	const loginHref = `/auth/login?next=${encodeURIComponent(pathname || `/blog/${slug}`)}`;
+
+	if (membersOnly && !user && !loading) {
+		return (
+			<section className="mt-14 border-t border-white/10 pt-10">
+				<div className="flex items-center gap-2 mb-4">
+					<MessageSquare className="h-5 w-5 text-green-400" />
+					<h2 className="text-xl font-heading font-bold uppercase tracking-wide">
+						Comments
+					</h2>
+				</div>
+				<div className="rounded-lg border border-white/10 bg-white/5 p-5">
+					<p className="text-gray-300 text-sm mb-3">
+						Sign in to read and join the discussion on this member-only article.
+					</p>
+					<Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
+						<Link href={loginHref}>Sign in to view comments</Link>
+					</Button>
+				</div>
+			</section>
+		);
+	}
 
 	return (
 		<section className="mt-14 border-t border-white/10 pt-10">

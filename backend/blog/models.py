@@ -33,6 +33,10 @@ class BlogPost(models.Model):
         help_text="When true, shown on the main /blog grid (up to 6, by sort order and date).",
     )
     is_published = models.BooleanField(default=True)
+    is_public = models.BooleanField(
+        default=False,
+        help_text="When true, anyone can read the full post and comments without signing in.",
+    )
     sort_order = models.IntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)

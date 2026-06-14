@@ -7,6 +7,8 @@ import { AUTH_SESSION_CHANGE_EVENT, fetchAuthUser } from "@/lib/auth"
 
 interface BlogContentGateProps {
   children: React.ReactNode
+  /** When true, article body is shown without login. */
+  isPublic?: boolean
   /** Shown below the article for all visitors (e.g. public comments). */
   footer?: React.ReactNode
   title: string
@@ -18,6 +20,7 @@ interface BlogContentGateProps {
 
 export function BlogContentGate({
   children,
+  isPublic = false,
   footer,
   title,
   category,
@@ -26,8 +29,14 @@ export function BlogContentGate({
   excerpt,
 }: BlogContentGateProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(!isPublic)
   const pathname = usePathname()
+
+  useEffect(() => {
+    if (isPublic) {
+      setIsLoading(false)
+    }
+  }, [isPublic])
 
   useEffect(() => {
     let cancelled = false
@@ -36,7 +45,9 @@ export function BlogContentGate({
       const user = await fetchAuthUser()
       if (!cancelled) {
         setIsAuthenticated(!!user)
-        setIsLoading(false)
+        if (!isPublic) {
+          setIsLoading(false)
+        }
       }
     }
 
@@ -47,7 +58,7 @@ export function BlogContentGate({
       cancelled = true
       window.removeEventListener(AUTH_SESSION_CHANGE_EVENT, checkAuth)
     }
-  }, [])
+  }, [isPublic])
 
   if (isLoading) {
     return (
@@ -82,7 +93,7 @@ export function BlogContentGate({
           <h1 className="text-4xl md:text-5xl font-bold mt-4">{title}</h1>
           <p className="text-gray-500 mt-4">{date}</p>
 
-          {isAuthenticated ? (
+          {isPublic || isAuthenticated ? (
             <div className="mt-12 prose prose-invert prose-lg max-w-none">
               {children}
             </div>
@@ -123,7 +134,7 @@ export function BlogContentGate({
             </div>
           )}
 
-          {footer ? <div className="mt-12">{footer}</div> : null}
+          {footer && (isPublic || isAuthenticated) ? <div className="mt-12">{footer}</div> : null}
         </div>
       </article>
     </main>

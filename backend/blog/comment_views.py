@@ -3,20 +3,11 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .comment_serializers import BlogCommentPublicSerializer
 from .models import BlogComment, BlogPost
-
-
-def _published_post(slug: str) -> BlogPost:
-    return get_object_or_404(
-        BlogPost,
-        slug=slug,
-        is_published=True,
-        deleted_at__isnull=True,
-    )
 
 
 def _comments_visible_to_user(post: BlogPost, user):
@@ -34,8 +25,23 @@ def _normalize_body(raw) -> str:
 @authentication_classes([TokenAuthentication])
 @permission_classes([AllowAny])
 def blog_post_comments(request, slug: str):
-    post = _published_post(slug)
     user = getattr(request, "user", None)
+
+    # Resolve post; private posts require a signed-in member for comments.
+    post = get_object_or_404(
+        BlogPost,
+        slug=slug,
+        is_published=True,
+        deleted_at__isnull=True,
+    )
+    if not post.is_public:
+        if not user or not user.is_authenticated or not user.is_active:
+            if request.method == "GET":
+                return Response({"comments": []})
+            return Response(
+                {"detail": "Sign in to view or post comments on member-only articles."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
     if request.method == "GET":
         qs = _comments_visible_to_user(post, user).order_by("-created_at")

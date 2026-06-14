@@ -61,6 +61,8 @@ export type BlogPostSummary = {
 export type BlogPostDetail = BlogPostSummary & {
   body: string;
   published_at?: string;
+  /** When true, full post and comments are open without login. */
+  is_public?: boolean;
 };
 
 export type BlogCommentPublic = {
@@ -100,6 +102,7 @@ export type BlogPostRecord = {
   published_at: string;
   is_featured: boolean;
   is_published: boolean;
+  is_public: boolean;
   sort_order: number;
   deleted_at?: string | null;
   created_at?: string;
