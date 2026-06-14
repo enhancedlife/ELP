@@ -243,23 +243,52 @@ export default function BrandingSettingsPage() {
 				<CardHeader>
 					<CardTitle>Browser tab icon (favicon)</CardTitle>
 					<CardDescription>
-						Square icon shown in browser tabs and bookmarks. ICO, PNG, WebP, SVG, or GIF. Max 2 MB.
+						Square icon for browser tabs and bookmarks. ICO, PNG, WebP, SVG, or GIF. Max 2 MB.
+						Raster uploads are auto-cropped to a square and optimized for tab display.
 						{!hasCustomFavicon(branding) ? " Using bundled default until you upload." : ""}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="rounded-lg border bg-muted/40 p-6 flex items-center gap-4">
-						<Image
-							src={faviconPreview}
-							alt="Favicon preview"
-							width={32}
-							height={32}
-							unoptimized
-							className="h-8 w-8 object-contain"
-						/>
-						<span className="text-sm text-muted-foreground">
-							Preview at 32×32 (browsers may scale differently)
-						</span>
+					<p className="text-xs text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
+						Browser tabs always show favicons at about 16–32 pixels — that size is controlled by
+						Chrome, Safari, and Firefox, not this site. For the clearest tab icon, upload a
+						simple square mark with bold shapes and little empty padding; re-upload after
+						changing the file to refresh the tab.
+					</p>
+					<div className="rounded-lg border bg-muted/40 p-6 flex flex-wrap items-center gap-6">
+						<div className="text-center">
+							<Image
+								src={faviconPreview}
+								alt="Favicon at tab size"
+								width={16}
+								height={16}
+								unoptimized
+								className="h-4 w-4 object-contain mx-auto"
+							/>
+							<p className="text-[10px] text-muted-foreground mt-1">16px (typical tab)</p>
+						</div>
+						<div className="text-center">
+							<Image
+								src={faviconPreview}
+								alt="Favicon at 32px"
+								width={32}
+								height={32}
+								unoptimized
+								className="h-8 w-8 object-contain mx-auto"
+							/>
+							<p className="text-[10px] text-muted-foreground mt-1">32px (retina tab)</p>
+						</div>
+						<div className="text-center">
+							<Image
+								src={faviconPreview}
+								alt="Favicon at home screen size"
+								width={64}
+								height={64}
+								unoptimized
+								className="h-16 w-16 object-contain mx-auto"
+							/>
+							<p className="text-[10px] text-muted-foreground mt-1">Home screen / bookmark</p>
+						</div>
 					</div>
 					<input
 						ref={faviconInputRef}

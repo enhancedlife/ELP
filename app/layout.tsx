@@ -34,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 function Header({ branding }: { branding: SiteBranding }) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-md border-b border-white/10">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-white/10">
       <div className="max-w-6xl mx-auto px-6 py-3 md:py-4 flex items-center justify-between gap-4">
         <SiteLogo
           branding={branding}
@@ -88,13 +88,13 @@ function Header({ branding }: { branding: SiteBranding }) {
 function Footer({ branding }: { branding: SiteBranding }) {
   const siteName = siteDisplayName(branding)
   return (
-    <footer className="border-t border-white/10 py-10 px-6 bg-black/40 backdrop-blur-sm">
+    <footer className="border-t border-white/10 py-10 px-6 bg-black">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
           <SiteLogo
             branding={branding}
             textClassName="text-2xl text-white"
-            imageClassName="h-14 sm:h-16 max-w-[300px]"
+            imageClassName="h-16 sm:h-20 max-w-[340px]"
           />
           <p className="text-gray-400 mt-2">
             Enhance. Optimize. Thrive.

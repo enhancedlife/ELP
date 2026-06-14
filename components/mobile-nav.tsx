@@ -71,7 +71,7 @@ export function MobileNav({ branding }: { branding?: SiteBranding | null }) {
               <SiteLogo
                 branding={branding}
                 textClassName="text-xl text-white"
-                imageClassName="h-12 max-w-[240px]"
+                imageClassName="h-14 max-w-[280px]"
                 onClick={closeMenu}
               />
               <button

@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from dashboard.permissions import DashboardAccess
 from dashboard.views import require_full_admin
 
-from .branding_utils import validate_favicon_upload, validate_logo_upload
+from .branding_utils import prepare_favicon_file, validate_favicon_upload, validate_logo_upload
 from .models import SiteBrandingSettings
 from .serializers_branding import SiteBrandingSerializer
 
@@ -107,6 +107,9 @@ def site_branding_favicon(request):
 
     if obj.favicon:
         obj.favicon.delete(save=False)
-    obj.favicon = uploaded
+    try:
+        obj.favicon = prepare_favicon_file(uploaded)
+    except ValidationError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     obj.save(update_fields=["favicon", "updated_at"])
     return Response(_serialize_branding(obj, request))

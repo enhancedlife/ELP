@@ -31,12 +31,12 @@ export function SiteLogo({
 				<Image
 					src={logoUrl}
 					alt={name}
-					width={320}
-					height={80}
+					width={360}
+					height={96}
 					priority
 					unoptimized
 					className={cn(
-						"h-12 w-auto max-w-[220px] sm:h-14 sm:max-w-[280px] md:max-w-[320px] object-contain object-left",
+						"h-14 w-auto max-w-[260px] sm:h-16 sm:max-w-[300px] md:h-[4.5rem] md:max-w-[360px] object-contain object-left",
 						imageClassName,
 					)}
 				/>

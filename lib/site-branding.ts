@@ -30,13 +30,24 @@ export function hasCustomFavicon(branding?: SiteBranding | null): boolean {
 	return Boolean(branding?.favicon_url?.trim());
 }
 
+function faviconHref(branding?: SiteBranding | null): string {
+	const favicon = resolveFaviconUrl(branding);
+	if (!branding?.updated_at) return favicon;
+	const sep = favicon.includes("?") ? "&" : "?";
+	return `${favicon}${sep}v=${encodeURIComponent(branding.updated_at)}`;
+}
+
 export function brandingMetadataIcons(
 	branding?: SiteBranding | null,
 ): NonNullable<Metadata["icons"]> {
-	const favicon = resolveFaviconUrl(branding);
+	const href = faviconHref(branding);
 	return {
-		icon: [{ url: favicon }],
-		apple: favicon,
+		icon: [
+			{ url: href, sizes: "32x32", type: "image/png" },
+			{ url: href, sizes: "192x192", type: "image/png" },
+		],
+		apple: [{ url: href, sizes: "180x180", type: "image/png" }],
+		shortcut: href,
 	};
 }
 
