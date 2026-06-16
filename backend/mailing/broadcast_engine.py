@@ -8,6 +8,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.utils import timezone
 
+from .default_layout import PLACEHOLDER_FOOTER_EXTRA
 from .email_layout import compose_broadcast_html
 from .email_logging import record_outbound_email
 from .models import EmailBroadcast, EmailBroadcastRecipient, NewsletterSubscriber, OutboundEmailLog
@@ -33,19 +34,9 @@ def _footer_newsletter_text(sub: NewsletterSubscriber) -> str:
 def _footer_newsletter_html(sub: NewsletterSubscriber) -> str:
     base = _public_site_base()
     url = f"{base}/unsubscribe?token={sub.unsubscribe_token}"
-    return f'<p style="margin-top:24px;font-size:12px;color:#666;"><a href="{url}">Unsubscribe</a></p>'
-
-
-def _footer_site_user_text() -> str:
-    base = _public_site_base()
-    return f"\n\n—\nThe Swole Republic · {base}"
-
-
-def _footer_site_user_html() -> str:
-    base = _public_site_base()
     return (
-        f'<p style="margin-top:24px;font-size:12px;color:#666;">'
-        f'<a href="{base}">The Swole Republic</a></p>'
+        f'<p style="margin:12px 0 0;font-size:12px;color:#9ca3af;">'
+        f'<a href="{url}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a></p>'
     )
 
 
@@ -83,6 +74,7 @@ def _dispatch_one(
             headline=broadcast.headline,
             subject=broadcast.subject,
             body_html=inner_html,
+            for_broadcast=True,
         )
     try:
         msg = EmailMultiAlternatives(
@@ -304,8 +296,8 @@ def process_broadcast_chunk(
                 text_suffix = ""
                 html_suffix = ""
         else:
-            text_suffix = _footer_site_user_text()
-            html_suffix = _footer_site_user_html()
+            text_suffix = ""
+            html_suffix = ""
 
         ok, err = _dispatch_one(
             broadcast,

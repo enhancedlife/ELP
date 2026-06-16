@@ -27,7 +27,7 @@ function groupSponsorsByCategory(sponsors: Sponsor[]): { category: string; items
 const FALLBACK_PAGE: Omit<PartnersPageSettings, 'id' | 'updated_at'> = {
   banner_image_url: '',
   banner_kicker: '',
-  hero_title: 'The Swole Republic Sponsors',
+  hero_title: 'Your Enhanced Life Sponsors',
   hero_lead:
     'Safe, reliable sponsors you can shop with confidence—high quality products to help you attain your goals.',
   intro_heading: '',

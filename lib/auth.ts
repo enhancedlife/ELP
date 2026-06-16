@@ -1,9 +1,20 @@
 import { authClientFetchUrl } from "@/lib/backend-public";
 
-export const AUTH_TOKEN_STORAGE_KEY = "theswolerepublic_auth_token";
+const LEGACY_AUTH_TOKEN_STORAGE_KEY = "theswolerepublic_auth_token";
+
+export const AUTH_TOKEN_STORAGE_KEY = "yourenhancedlife_auth_token";
 
 /** Same-tab listeners (e.g. SiteHeader) refresh when login/logout updates localStorage. */
-export const AUTH_SESSION_CHANGE_EVENT = "theswolerepublic-auth-change";
+export const AUTH_SESSION_CHANGE_EVENT = "yourenhancedlife-auth-change";
+
+function migrateLegacyAuthStorage(): void {
+	if (typeof window === "undefined") return;
+	const legacyToken = localStorage.getItem(LEGACY_AUTH_TOKEN_STORAGE_KEY);
+	if (legacyToken && !localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)) {
+		localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, legacyToken);
+	}
+	localStorage.removeItem(LEGACY_AUTH_TOKEN_STORAGE_KEY);
+}
 
 /** Prevents hung UI when Django / Next rewrites are slow or unreachable. */
 const AUTH_FETCH_TIMEOUT_MS = 12_000;
@@ -96,6 +107,7 @@ export function isDashboardFullAdmin(user: AuthUser | null | undefined): boolean
 
 export function getStoredToken(): string | null {
 	if (typeof window === "undefined") return null;
+	migrateLegacyAuthStorage();
 	return localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
 }
 

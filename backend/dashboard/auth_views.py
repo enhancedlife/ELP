@@ -361,9 +361,9 @@ def _password_reset_log_subject(user) -> str:
     if user and _member_password_reset_eligible(user):
         return str(
             getattr(settings, "MEMBER_PASSWORD_RESET_EMAIL_SUBJECT", None)
-            or "Password reset — The Swole Republic"
+            or "Password reset — Your Enhanced Life"
         )
-    return "Password reset — The Swole Republic"
+    return "Password reset — Your Enhanced Life"
 
 
 def _send_password_reset_mail_or_probe(email: str, user) -> None:
@@ -380,7 +380,7 @@ def _send_password_reset_mail_or_probe(email: str, user) -> None:
         subject = settings.MEMBER_PASSWORD_RESET_EMAIL_SUBJECT
         body = (
             "Hi,\n\n"
-            "We received a request to reset your password for The Swole Republic. "
+            "We received a request to reset your password for Your Enhanced Life. "
             "Open this link to choose a new password:\n\n"
             f"{reset_link}\n\n"
             "If you did not request this, you can ignore this email.\n"
@@ -398,29 +398,29 @@ def _send_password_reset_mail_or_probe(email: str, user) -> None:
         return
 
     if user and (user.is_staff or user.is_superuser):
-        subject = "Password reset — The Swole Republic"
+        subject = "Password reset — Your Enhanced Life"
         body = (
             "Hi,\n\n"
             "We received a password reset request for this address. "
             "Staff and administrator accounts do not use the member self-service reset flow. "
             "Use Admin sign-in or Django Admin to manage your password.\n\n"
-            "This message confirms outbound mail from The Swole Republic.\n"
+            "This message confirms outbound mail from Your Enhanced Life.\n"
         )
     elif user and not user.is_active:
-        subject = "Password reset — The Swole Republic"
+        subject = "Password reset — Your Enhanced Life"
         body = (
             "Hi,\n\n"
             "We received a password reset request for this address. "
             "This account is not active, so a reset link was not issued.\n\n"
-            "This message confirms outbound mail from The Swole Republic.\n"
+            "This message confirms outbound mail from Your Enhanced Life.\n"
         )
     else:
-        subject = "Password reset — The Swole Republic"
+        subject = "Password reset — Your Enhanced Life"
         body = (
             "Hi,\n\n"
             "We received a password reset request for this address. "
             "No member account was found with this email, so no reset link was sent.\n\n"
-            "This message confirms outbound mail from The Swole Republic.\n"
+            "This message confirms outbound mail from Your Enhanced Life.\n"
         )
     send_outbound_mail(
         subject,

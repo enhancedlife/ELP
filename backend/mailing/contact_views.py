@@ -146,7 +146,7 @@ def contact_submit(request):
     )
     body = "\n".join(body_lines)
 
-    subject = f"[TSR Contact] {issue_label} — {name}"
+    subject = f"[YEL Contact] {issue_label} — {name}"
 
     to_addr = _contact_recipient()
     try:

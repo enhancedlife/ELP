@@ -231,17 +231,21 @@ export default function EmailTemplatePage() {
 									onChange={(v) => patchConfig({ header_bg_color: v })}
 								/>
 								<div className="grid gap-2">
-									<Label htmlFor="logo-url">Logo URL (optional)</Label>
+									<Label htmlFor="logo-url">Header logo URL</Label>
 									<Input
 										id="logo-url"
 										value={layoutConfig.header_logo_url}
 										onChange={(e) => patchConfig({ header_logo_url: e.target.value })}
-										placeholder="https://yoursite.com/logo.png or /images/logo.png"
+										placeholder="https://yourenhancedlife.com/logoYEL.png"
 										disabled={loading}
 									/>
+									<p className="text-xs text-muted-foreground">
+										When set, only the logo is shown in the header. Heading and tagline below are used as
+										image alt text if the logo cannot load.
+									</p>
 								</div>
 								<div className="grid gap-2">
-									<Label htmlFor="hdr-heading">Heading</Label>
+									<Label htmlFor="hdr-heading">Heading (alt text fallback)</Label>
 									<Input
 										id="hdr-heading"
 										value={layoutConfig.header_heading}
@@ -255,7 +259,7 @@ export default function EmailTemplatePage() {
 									onChange={(v) => patchConfig({ header_heading_color: v })}
 								/>
 								<div className="grid gap-2">
-									<Label htmlFor="hdr-tag">Tagline (optional)</Label>
+									<Label htmlFor="hdr-tag">Tagline (alt text fallback, optional)</Label>
 									<Input
 										id="hdr-tag"
 										value={layoutConfig.header_tagline}

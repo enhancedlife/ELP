@@ -203,7 +203,7 @@ def system_email_layout_test_send(request):
             {"detail": "Recipient address `to` is required."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    subject = (request.data.get("subject") or "Test — The Swole Republic").strip()
+    subject = (request.data.get("subject") or "Test — Your Enhanced Life").strip()
     headline = (request.data.get("headline") or "Test headline").strip()
     body_html = (
         request.data.get("body_html")

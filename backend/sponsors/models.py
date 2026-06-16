@@ -17,7 +17,7 @@ class PartnersPageSettings(models.Model):
     )
     hero_title = models.CharField(
         max_length=255,
-        default="The Swole Republic Sponsors",
+        default="Your Enhanced Life Sponsors",
     )
     hero_lead = models.TextField(
         blank=True,

@@ -10,7 +10,7 @@ def _partners_page_or_default():
         pk=1,
         defaults={
             "banner_kicker": "SPONSORS",
-            "hero_title": "The Swole Republic Sponsors",
+            "hero_title": "Your Enhanced Life Sponsors",
         },
     )
     return obj

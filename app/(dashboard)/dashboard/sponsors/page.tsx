@@ -75,7 +75,7 @@ export default function DashboardSponsorsPage() {
 		id: 1,
 		banner_image_url: "",
 		banner_kicker: "SPONSORS",
-		hero_title: "The Swole Republic Sponsors",
+		hero_title: "Your Enhanced Life Sponsors",
 		hero_lead: "",
 		intro_heading: "",
 		intro_body: "",

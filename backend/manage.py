@@ -6,8 +6,8 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'theswolerepublic.settings')
-    import theswolerepublic.py314_context_fix as _py314  # noqa: PLC0415
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'elp.settings')
+    import elp.py314_context_fix as _py314  # noqa: PLC0415
 
     _py314.apply()
     try:

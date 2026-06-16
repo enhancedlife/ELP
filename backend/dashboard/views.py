@@ -194,7 +194,7 @@ def backend_root(request):
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>The Swole Republic — API</title>
+  <title>Your Enhanced Life — API</title>
 </head>
 <body style="font-family:system-ui,sans-serif;max-width:42rem;margin:2rem auto;padding:0 1rem;line-height:1.55;color:#111">
   <h1 style="font-size:1.35rem">Django backend</h1>
@@ -677,7 +677,7 @@ def partners_page_settings(request):
         pk=1,
         defaults={
             "banner_kicker": "SPONSORS",
-            "hero_title": "The Swole Republic Sponsors",
+            "hero_title": "Your Enhanced Life Sponsors",
         },
     )
     if request.method == "GET":

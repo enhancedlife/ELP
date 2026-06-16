@@ -5,9 +5,11 @@ def seed_layout(apps, schema_editor):
     SystemEmailLayout = apps.get_model("mailing", "SystemEmailLayout")
     if SystemEmailLayout.objects.exists():
         return
-    from mailing.default_layout import DEFAULT_SYSTEM_EMAIL_TEMPLATE
+    from mailing.layout_config import DEFAULT_EMAIL_LAYOUT_CONFIG, build_template_from_config
 
-    SystemEmailLayout.objects.create(template_html=DEFAULT_SYSTEM_EMAIL_TEMPLATE)
+    SystemEmailLayout.objects.create(
+        template_html=build_template_from_config(DEFAULT_EMAIL_LAYOUT_CONFIG),
+    )
 
 
 class Migration(migrations.Migration):

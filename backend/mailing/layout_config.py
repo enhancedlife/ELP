@@ -7,13 +7,13 @@ import re
 from copy import deepcopy
 from typing import Any
 
-from .default_layout import PLACEHOLDER_BODY, PLACEHOLDER_TITLE
+from .default_layout import PLACEHOLDER_BODY, PLACEHOLDER_FOOTER_EXTRA, PLACEHOLDER_TITLE
 
 HEX_COLOR_RE = re.compile(r"^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$")
 
 DEFAULT_EMAIL_LAYOUT_CONFIG: dict[str, str] = {
     "header_bg_color": "#0a0c0f",
-    "header_logo_url": "",
+    "header_logo_url": "https://yourenhancedlife.com/logoYEL.png",
     "header_heading": "Your Enhanced Life",
     "header_heading_color": "#4ade80",
     "header_tagline": "Enhance. Optimize. Thrive.",
@@ -22,7 +22,7 @@ DEFAULT_EMAIL_LAYOUT_CONFIG: dict[str, str] = {
     "footer_contact_email": "admin@yourenhancedlife.com",
     "footer_copyright": "© 2026 Your Enhanced Life. All rights reserved.",
     "footer_disclaimer": "Educational content only. Not medical advice.",
-    "footer_site_url": "",
+    "footer_site_url": "https://yourenhancedlife.com",
     "body_bg_color": "#111827",
     "body_text_color": "#d1d5db",
     "title_text_color": "#f9fafb",
@@ -88,26 +88,44 @@ def _esc(value: str) -> str:
 def build_template_from_config(config: dict[str, str] | None) -> str:
     cfg = normalize_layout_config(config)
     logo = cfg["header_logo_url"].strip()
-    logo_block = ""
-    if logo:
-        logo_block = (
-            f'<img src="{_esc(logo)}" alt="{_esc(cfg["header_heading"])}" '
-            f'style="max-width:180px;max-height:64px;margin:0 auto 16px;display:block;" />'
-        )
+    heading = _esc(cfg["header_heading"])
     tagline = cfg["header_tagline"].strip()
-    tagline_block = ""
+    tagline_esc = _esc(tagline)
+    alt_parts = [cfg["header_heading"].strip()]
     if tagline:
-        tagline_block = (
-            f'<p style="color:{_esc(cfg["header_tagline_color"])};margin:12px 0 0;'
-            f'font-size:15px;line-height:1.5;">{_esc(tagline)}</p>'
+        alt_parts.append(tagline)
+    logo_alt = _esc(" — ".join(alt_parts))
+    site_url = (cfg["footer_site_url"].strip() or "https://yourenhancedlife.com").rstrip("/")
+
+    if logo:
+        logo_img = (
+            f'<img src="{_esc(logo)}" alt="{logo_alt}" width="520" '
+            f'style="max-width:100%;width:520px;height:auto;margin:0 auto;display:block;border:0;" />'
         )
-    site_url = cfg["footer_site_url"].strip()
+        header_block = (
+            f'<a href="{_esc(site_url)}" style="text-decoration:none;display:inline-block;">'
+            f"{logo_img}</a>"
+        )
+    else:
+        tagline_block = ""
+        if tagline:
+            tagline_block = (
+                f'<p style="color:{_esc(cfg["header_tagline_color"])};margin:12px 0 0;'
+                f'font-size:15px;line-height:1.5;">{tagline_esc}</p>'
+            )
+        header_block = (
+            f'<h1 style="color:{_esc(cfg["header_heading_color"])};margin:0;font-size:26px;'
+            f'font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">{heading}</h1>'
+            f"{tagline_block}"
+        )
+
     site_link = ""
-    if site_url:
+    footer_site = cfg["footer_site_url"].strip()
+    if footer_site:
         site_link = (
             f'<p style="margin:8px 0;">'
-            f'<a href="{_esc(site_url)}" style="color:{_esc(cfg["header_heading_color"])};'
-            f'text-decoration:none;">{_esc(site_url.replace("https://", "").replace("http://", ""))}</a>'
+            f'<a href="{_esc(footer_site)}" style="color:{_esc(cfg["header_heading_color"])};'
+            f'text-decoration:none;">{_esc(footer_site.replace("https://", "").replace("http://", ""))}</a>'
             f"</p>"
         )
     contact = _esc(cfg["footer_contact_email"])
@@ -130,11 +148,7 @@ def build_template_from_config(config: dict[str, str] | None) -> str:
         <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:600px;border-collapse:collapse;border:{section_border};border-radius:12px;overflow:hidden;background-color:{body_bg};">
           <tr>
             <td style="background-color:{header_bg};padding:28px 24px;text-align:center;border-bottom:{section_border};">
-              {logo_block}
-              <h1 style="color:{_esc(cfg["header_heading_color"])};margin:0;font-size:26px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">
-                {_esc(cfg["header_heading"])}
-              </h1>
-              {tagline_block}
+              {header_block}
             </td>
           </tr>
           <tr>
@@ -153,6 +167,7 @@ def build_template_from_config(config: dict[str, str] | None) -> str:
               <p style="margin:0;">
                 <a href="mailto:{contact}" style="color:{_esc(cfg["header_heading_color"])};text-decoration:none;">{contact}</a>
               </p>
+              {PLACEHOLDER_FOOTER_EXTRA}
             </td>
           </tr>
         </table>

@@ -35,7 +35,7 @@ class Command(BaseCommand):
             tls_on = "yes" if (resolved.use_tls if resolved else settings.EMAIL_USE_TLS) else "no"
             ssl_on = "yes" if (resolved.use_ssl if resolved else settings.EMAIL_USE_SSL) else "no"
             body = (
-                "THE SWOLE REPUBLIC\n"
+                "YOUR ENHANCED LIFE\n"
                 "Outbound mail test\n"
                 "\n"
                 "This is a plain-text check that your server can authenticate to SMTP and hand off "
@@ -55,7 +55,7 @@ class Command(BaseCommand):
                 "\n"
                 "Sent by: manage.py sendtestemail\n"
             )
-            subj = "The Swole Republic — SMTP connectivity test"
+            subj = "Your Enhanced Life — SMTP connectivity test"
             send_outbound_mail(
                 subject=subj,
                 message=body,
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             record_outbound_email(
                 source=OutboundEmailLog.Source.SMTP_CLI,
                 to_email=to,
-                subject="The Swole Republic — SMTP connectivity test",
+                subject="Your Enhanced Life — SMTP connectivity test",
                 success=False,
                 error_message=f"{smtp_failure_user_message(e)}\n\nTechnical: {e!r}"[:4000],
                 error_type=type(e).__name__,
@@ -77,7 +77,7 @@ class Command(BaseCommand):
         record_outbound_email(
             source=OutboundEmailLog.Source.SMTP_CLI,
             to_email=to,
-            subject="The Swole Republic — SMTP connectivity test",
+            subject="Your Enhanced Life — SMTP connectivity test",
             success=True,
         )
         self.stdout.write(self.style.SUCCESS(f"Sent test email to {to}"))
