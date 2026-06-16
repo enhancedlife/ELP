@@ -25,13 +25,8 @@ def _published_qs(request=None):
 
 
 def _blog_listing_qs():
-    """Published, non-archived posts for /blog cards (drafts excluded)."""
+    """Published posts for public listings (drafts excluded). Archive = all of these; /blog = featured subset."""
     return BlogPost.objects.filter(is_published=True, deleted_at__isnull=True)
-
-
-def _archived_qs():
-    """Archived (soft-deleted) posts still listed on /blog/archive; detail page gates private body."""
-    return BlogPost.objects.filter(is_published=True, deleted_at__isnull=False)
 
 
 def _paginate_posts(request, qs, page_param="page", page_size_param="page_size", default_page_size=6):
@@ -68,12 +63,11 @@ def _paginate_posts(request, qs, page_param="page", page_size_param="page_size",
 def blog_posts_list(request):
     """
     GET /api/blog/posts
-    ?featured=1 — main /blog grid (featured, max 6)
-    ?archived=1&page=1&page_size=6 — soft-deleted posts for /blog/archive
-    ?page=1&page_size=6 — non-featured active posts (legacy pagination)
-    ?include_featured=1 — pagination includes featured posts too
+    ?featured=1 — main /blog grid (published featured, max 6)
+    ?archived=1&page=1&page_size=6 — older posts (/blog/archive): all published posts incl. featured
+    ?page=1&page_size=6 — legacy non-featured pagination
 
-    Guests only receive public posts; authenticated members also see private posts.
+    Drafts and admin-archived (soft-deleted) posts are never listed publicly.
     """
     if _truthy(request.query_params.get("featured")):
         qs = (
@@ -86,7 +80,7 @@ def blog_posts_list(request):
         )
 
     if _truthy(request.query_params.get("archived")):
-        return _paginate_posts(request, _archived_qs())
+        return _paginate_posts(request, _blog_listing_qs())
 
     qs = _published_qs(request).order_by("-published_at", "sort_order")
     if not _truthy(request.query_params.get("include_featured")):
@@ -126,6 +120,7 @@ def blog_post_by_slug(request, slug: str):
         BlogPost,
         slug=slug,
         is_published=True,
+        deleted_at__isnull=True,
     )
     user = getattr(request, "user", None)
     if not post.is_public:

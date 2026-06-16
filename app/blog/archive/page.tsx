@@ -35,9 +35,9 @@ export default async function BlogArchivePage({
             </svg>
             <span>Back to Blog</span>
           </Link>
-          <h1 className="text-4xl md:text-5xl font-heading font-bold uppercase tracking-wide">Blog Archive</h1>
+          <h1 className="text-4xl md:text-5xl font-heading font-bold uppercase tracking-wide">Older Blog Posts</h1>
           <p className="mt-4 text-xl text-gray-400 max-w-2xl">
-            Browse our collection of older articles on peptides, hormone optimization, and recovery.
+            Every published article appears here. Featured posts are also shown on the main blog page.
             {currentPage > 1 && ` Page ${currentPage} of ${totalPages}.`}
           </p>
         </div>
@@ -47,7 +47,7 @@ export default async function BlogArchivePage({
       <section className="py-12 px-6">
         <div className="max-w-4xl mx-auto">
           {articles.length === 0 ? (
-            <p className="text-gray-400 text-center py-12">No archived posts yet.</p>
+            <p className="text-gray-400 text-center py-12">No published articles yet.</p>
           ) : (
             <div className="space-y-6">
               {articles.map((article) => (

@@ -5,7 +5,6 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 
-from common.soft_delete import soft_delete
 from dashboard.permissions import DashboardAccess
 from dashboard.views import _truthy_query_param, require_full_admin
 
@@ -16,9 +15,16 @@ from .serializers import BlogPostDashboardSerializer
 
 def _dashboard_qs(request):
     qs = BlogPost.objects.all().order_by("-published_at", "sort_order")
-    if _truthy_query_param(request.query_params.get("archived_only")):
-        return qs.filter(deleted_at__isnull=False)
-    return qs.filter(deleted_at__isnull=True)
+    listing = (request.query_params.get("listing") or "").strip().lower()
+    if listing == "featured":
+        qs = qs.filter(is_published=True, is_featured=True)
+    elif listing in ("older", "archive"):
+        qs = qs.filter(is_published=True, is_featured=False)
+    elif listing == "draft":
+        qs = qs.filter(is_published=False)
+    elif _truthy_query_param(request.query_params.get("featured_only")):
+        qs = qs.filter(is_featured=True)
+    return qs
 
 
 def _serialize_post(post, request):
@@ -34,8 +40,6 @@ def blog_posts_collection(request):
         return denied
     if request.method == "GET":
         qs = _dashboard_qs(request)
-        if _truthy_query_param(request.query_params.get("featured_only")):
-            qs = qs.filter(is_featured=True)
         return Response(
             {
                 "posts": BlogPostDashboardSerializer(
@@ -68,8 +72,11 @@ def blog_post_detail(request, pk):
         serializer.is_valid(raise_exception=True)
         post = serializer.save()
         return Response(_serialize_post(post, request))
-    soft_delete(post)
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    if request.method == "DELETE":
+        if post.thumbnail:
+            post.thumbnail.delete(save=False)
+        post.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(["POST", "DELETE"])

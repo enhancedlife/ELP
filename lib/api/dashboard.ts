@@ -323,13 +323,18 @@ export function deleteDashboardLandingPage(id: number) {
 	return mutateDashboardJson<null>("DELETE", `landing-pages/${id}`);
 }
 
+export type DashboardBlogListingFilter = "all" | "featured" | "older" | "draft";
+
 export function getDashboardBlogPosts(options?: {
-	archivedOnly?: boolean;
 	featuredOnly?: boolean;
+	listing?: DashboardBlogListingFilter;
 }) {
 	const params = new URLSearchParams();
-	if (options?.archivedOnly === true) params.set("archived_only", "1");
-	if (options?.featuredOnly === true) params.set("featured_only", "1");
+	if (options?.listing && options.listing !== "all") {
+		params.set("listing", options.listing);
+	} else if (options?.featuredOnly === true) {
+		params.set("featured_only", "1");
+	}
 	const q = params.toString();
 	return fetchDashboardJson<DashboardBlogPostsResponse>(
 		q ? `blog-posts?${q}` : "blog-posts",

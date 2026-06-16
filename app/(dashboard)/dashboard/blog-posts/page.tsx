@@ -43,6 +43,7 @@ import {
   patchDashboardBlogPost,
   postDashboardBlogPost,
   uploadDashboardBlogPostThumbnail,
+  type DashboardBlogListingFilter,
 } from "@/lib/api/dashboard"
 import { BLOG_CATEGORIES } from "@/lib/blog"
 import type { BlogPostRecord } from "@/lib/types"
@@ -83,11 +84,31 @@ const emptyForm = {
 
 type CardImageMode = "url" | "upload"
 
+const LISTING_FILTER_LABELS: Record<DashboardBlogListingFilter, string> = {
+  all: "All posts",
+  featured: "Featured (main blog)",
+  older: "Older posts only",
+  draft: "Drafts",
+}
+
+const EMPTY_FILTER_MESSAGES: Record<DashboardBlogListingFilter, string> = {
+  all: "No blog posts yet. Create one to populate /blog.",
+  featured: "No featured published posts. Mark a published post as Featured on /blog.",
+  older: "No published posts on the older-posts page only. Publish a post without Featured.",
+  draft: "No draft posts.",
+}
+
+function postListingLabel(p: BlogPostRecord): string {
+  if (!p.is_published) return "Draft"
+  if (p.is_featured) return "Main blog + older posts"
+  return "Older posts only"
+}
+
 export default function DashboardBlogPostsPage() {
   const [posts, setPosts] = useState<BlogPostRecord[]>([])
   const [banner, setBanner] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showArchived, setShowArchived] = useState(false)
+  const [listingFilter, setListingFilter] = useState<DashboardBlogListingFilter>("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -119,7 +140,7 @@ export default function DashboardBlogPostsPage() {
 
   const loadPosts = useCallback(async () => {
     setLoading(true)
-    const { ok, data, status } = await getDashboardBlogPosts({ archivedOnly: showArchived })
+    const { ok, data, status } = await getDashboardBlogPosts({ listing: listingFilter })
     if (!ok || !data) {
       setBanner(describeDashboardFetchFailure(status))
       setPosts([])
@@ -128,7 +149,7 @@ export default function DashboardBlogPostsPage() {
       setPosts(Array.isArray(data.posts) ? data.posts : [])
     }
     setLoading(false)
-  }, [showArchived])
+  }, [listingFilter])
 
   useEffect(() => {
     void loadPosts()
@@ -263,24 +284,20 @@ export default function DashboardBlogPostsPage() {
     void loadPosts()
   }
 
-  async function handleRestore(id: number) {
-    const res = await patchDashboardBlogPost(id, { deleted_at: null })
-    if (!res.ok) {
-      toast.error("Could not restore post", { description: res.errorMessage })
+  async function handleDelete(id: number, title: string) {
+    if (
+      !confirm(
+        `Delete "${title}"? This cannot be undone and will remove all comments on this post.`,
+      )
+    ) {
       return
     }
-    toast.success("Post restored")
-    void loadPosts()
-  }
-
-  async function handleDelete(id: number) {
-    if (!confirm("Archive this blog post?")) return
     const result = await deleteDashboardBlogPost(id)
     if (!result.ok) {
-      toast.error("Could not archive post.")
+      toast.error("Could not delete post.", { description: result.errorMessage })
       return
     }
-    toast.success("Post archived")
+    toast.success("Post deleted")
     void loadPosts()
   }
 
@@ -290,7 +307,8 @@ export default function DashboardBlogPostsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Blog posts</h1>
           <p className="text-sm text-muted-foreground">
-            Manage articles shown on the public blog listing and member-gated post pages.
+            Publishing adds a post to View Older Blog Posts. Turn on Featured to also show it on the main /blog page.
+            Drafts stay hidden until published.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -319,26 +337,40 @@ export default function DashboardBlogPostsPage() {
       ) : null}
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>{showArchived ? "Archived posts" : "Active posts"}</CardTitle>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Switch checked={showArchived} onCheckedChange={setShowArchived} />
-            Show archived only
-          </label>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0">
+          <CardTitle>{LISTING_FILTER_LABELS[listingFilter]}</CardTitle>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="listing-filter" className="text-sm text-muted-foreground shrink-0">
+              Show
+            </Label>
+            <Select
+              value={listingFilter}
+              onValueChange={(v) => setListingFilter(v as DashboardBlogListingFilter)}
+            >
+              <SelectTrigger id="listing-filter" className="w-[220px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All posts</SelectItem>
+                <SelectItem value="featured">Featured (main blog)</SelectItem>
+                <SelectItem value="older">Older posts only</SelectItem>
+                <SelectItem value="draft">Drafts</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : posts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {showArchived ? "No archived posts." : "No blog posts yet. Create one to populate /blog."}
-            </p>
+            <p className="text-sm text-muted-foreground">{EMPTY_FILTER_MESSAGES[listingFilter]}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>On site</TableHead>
                   <TableHead>Featured</TableHead>
                   <TableHead>Visibility</TableHead>
                   <TableHead>Status</TableHead>
@@ -354,12 +386,13 @@ export default function DashboardBlogPostsPage() {
                     </TableCell>
                     <TableCell>{p.category}</TableCell>
                     <TableCell>
+                      <span className="text-sm text-muted-foreground">{postListingLabel(p)}</span>
+                    </TableCell>
+                    <TableCell>
                       {p.is_featured ? <Badge variant="secondary">Featured</Badge> : "—"}
                     </TableCell>
                     <TableCell>
-                      {p.deleted_at ? (
-                        "—"
-                      ) : p.is_published ? (
+                      {p.is_published ? (
                         p.is_public ? (
                           <Badge className="bg-green-600 hover:bg-green-600">Public</Badge>
                         ) : (
@@ -370,30 +403,26 @@ export default function DashboardBlogPostsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {p.deleted_at ? (
-                        <Badge variant="outline">Archived</Badge>
-                      ) : (
-                        <label className="flex items-center gap-2 text-sm">
-                          <Switch
-                            checked={p.is_published}
-                            onCheckedChange={() => void handleTogglePublished(p)}
-                          />
-                          <span className="whitespace-nowrap text-muted-foreground">
-                            {p.is_published ? "Published" : "Draft"}
-                          </span>
-                        </label>
-                      )}
+                      <label className="flex items-center gap-2 text-sm">
+                        <Switch
+                          checked={p.is_published}
+                          onCheckedChange={() => void handleTogglePublished(p)}
+                        />
+                        <span className="whitespace-nowrap text-muted-foreground">
+                          {p.is_published ? "Published" : "Draft"}
+                        </span>
+                      </label>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {p.is_published && !p.deleted_at ? (
+                        {p.is_published ? (
                           <Button variant="ghost" size="icon" asChild>
                             <Link href={`/blog/${p.slug}`} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4" />
                             </Link>
                           </Button>
                         ) : null}
-                        {!p.deleted_at && p.is_published ? (
+                        {p.is_published ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -405,15 +434,15 @@ export default function DashboardBlogPostsPage() {
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        {p.deleted_at ? (
-                          <Button variant="outline" size="sm" onClick={() => void handleRestore(p.id)}>
-                            Restore
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="icon" onClick={() => void handleDelete(p.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => void handleDelete(p.id, p.title)}
+                          title="Delete post"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

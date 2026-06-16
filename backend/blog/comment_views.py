@@ -32,6 +32,7 @@ def blog_post_comments(request, slug: str):
         BlogPost,
         slug=slug,
         is_published=True,
+        deleted_at__isnull=True,
     )
     if not post.is_public:
         if not user or not user.is_authenticated or not user.is_active:

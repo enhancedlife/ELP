@@ -105,10 +105,10 @@ function Footer({ branding }: { branding: SiteBranding }) {
         </div>
 
         <div className="flex gap-6 text-gray-300">
-          <Link href="/resources" className="hover:text-white transition">Resources</Link>
           <Link href={HOME_NAV_LINK.href} className="hover:text-white transition">
             {HOME_NAV_LINK.title}
           </Link>
+          <Link href="/resources" className="hover:text-white transition">Resources</Link>
           {MAIN_NAV_LINKS.map((item) => (
             <Link key={item.href} href={item.href} className="hover:text-white transition">
               {item.title}
