@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { BlogContentGate } from "@/components/blog-content-gate"
 import { BlogArticleBody } from "@/components/blog-article-body"
-import { BlogCommentsSection } from "@/components/blog-comments-section"
 import { getBlogPostWithAuth } from "@/lib/api/blog-client"
 import { AUTH_SESSION_CHANGE_EVENT, fetchAuthUser } from "@/lib/auth"
 import type { BlogPostDetail } from "@/lib/types"
@@ -43,14 +42,12 @@ export function BlogPostView({ post: initialPost }: { post: BlogPostDetail }) {
   return (
     <BlogContentGate
       isPublic={isPublic}
+      commentSlug={post.slug}
       title={post.title}
       category={post.category}
       readTime={post.read_time}
       date={post.date}
       excerpt={post.excerpt}
-      footer={
-        <BlogCommentsSection slug={post.slug} membersOnly={!isPublic} />
-      }
     >
       {post.body?.trim() ? (
         <BlogArticleBody body={post.body} />

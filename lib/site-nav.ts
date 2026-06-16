@@ -9,6 +9,8 @@ export const SITE_RESOURCES = [
   { title: "Fat Loss Protocols", href: "/resources/fat-loss-protocols" },
 ] as const
 
+export const HOME_NAV_LINK = { title: "Home", href: "/" } as const
+
 export const MAIN_NAV_LINKS = [
   { title: "Blog", href: "/blog" },
   { title: "Sponsors", href: "/sponsors" },

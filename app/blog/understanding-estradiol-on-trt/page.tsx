@@ -4,6 +4,7 @@ import { BlogContentGate } from "@/components/blog-content-gate"
 export default function EstradiolArticle() {
   return (
     <BlogContentGate
+      commentSlug="understanding-estradiol-on-trt"
       title="Understanding Estradiol on TRT"
       category="TRT / HRT"
       readTime="8 min read"

@@ -3,6 +3,7 @@ import { BlogContentGate } from "@/components/blog-content-gate"
 export default function GHSecretagoguesArticle() {
   return (
     <BlogContentGate
+      commentSlug="the-science-of-growth-hormone-secretagogues"
       title="The Science of Growth Hormone Secretagogues"
       category="Peptides"
       readTime="12 min read"

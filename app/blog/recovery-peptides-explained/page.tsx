@@ -3,6 +3,7 @@ import { BlogContentGate } from "@/components/blog-content-gate"
 export default function RecoveryPeptidesArticle() {
   return (
     <BlogContentGate
+      commentSlug="recovery-peptides-explained"
       title="Recovery Peptides Explained"
       category="Peptides"
       readTime="10 min read"

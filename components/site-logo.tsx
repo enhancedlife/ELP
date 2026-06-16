@@ -36,7 +36,7 @@ export function SiteLogo({
 					priority
 					unoptimized
 					className={cn(
-						"h-16 w-auto max-w-[280px] sm:h-[4.5rem] sm:max-w-[340px] md:h-20 md:max-w-[400px] object-contain object-left",
+						"h-12 w-auto max-w-[220px] sm:h-14 sm:max-w-[280px] md:h-16 md:max-w-[320px] object-contain object-left",
 						imageClassName,
 					)}
 				/>

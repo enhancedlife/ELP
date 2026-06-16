@@ -8,7 +8,7 @@ import { ResourcesDropdown } from '@/components/resources-dropdown'
 import { MobileNav } from '@/components/mobile-nav'
 import { ClientHeaderAuth } from '@/components/client-header-auth'
 import { SiteLogo } from '@/components/site-logo'
-import { MAIN_NAV_LINKS } from '@/lib/site-nav'
+import { HOME_NAV_LINK, MAIN_NAV_LINKS } from '@/lib/site-nav'
 import { SiteLayoutShell } from '@/components/site-layout-shell'
 import { ThemeProvider } from '@/components/theme-provider'
 import {
@@ -38,10 +38,16 @@ function Header({ branding }: { branding: SiteBranding }) {
       <div className="max-w-6xl mx-auto px-6 py-3 md:py-4 flex items-center justify-between gap-4">
         <SiteLogo
           branding={branding}
-          textClassName="text-xl text-white"
+          textClassName="text-lg text-white"
         />
         
         <nav className="hidden md:flex items-center gap-8">
+          <Link
+            href={HOME_NAV_LINK.href}
+            className="text-gray-300 hover:text-white transition font-medium"
+          >
+            {HOME_NAV_LINK.title}
+          </Link>
           <ResourcesDropdown />
           {MAIN_NAV_LINKS.map((item) => (
             <Link
@@ -94,12 +100,15 @@ function Footer({ branding }: { branding: SiteBranding }) {
           <SiteLogo
             branding={branding}
             textClassName="text-2xl text-white"
-            imageClassName="h-[4.5rem] sm:h-24 max-w-[380px]"
+            imageClassName="h-12 sm:h-14 max-w-[280px]"
           />
         </div>
 
         <div className="flex gap-6 text-gray-300">
           <Link href="/resources" className="hover:text-white transition">Resources</Link>
+          <Link href={HOME_NAV_LINK.href} className="hover:text-white transition">
+            {HOME_NAV_LINK.title}
+          </Link>
           {MAIN_NAV_LINKS.map((item) => (
             <Link key={item.href} href={item.href} className="hover:text-white transition">
               {item.title}

@@ -4,6 +4,7 @@ import { BlogContentGate } from "@/components/blog-content-gate"
 export default function BPC157GuideArticle() {
   return (
     <BlogContentGate
+      commentSlug="beginners-guide-to-bpc-157"
       title="Beginner's Guide to BPC-157"
       category="Peptides"
       readTime="9 min read"

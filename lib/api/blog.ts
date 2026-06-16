@@ -34,7 +34,7 @@ export async function getBlogArchivePage(
   pageSize = 6,
 ): Promise<BlogArchiveResponse> {
   const data = await safeFetchJson<BlogArchiveResponse>(
-    `/api/blog/posts?page=${page}&page_size=${pageSize}`,
+    `/api/blog/posts?archived=1&page=${page}&page_size=${pageSize}`,
   )
   if (data && Array.isArray(data.results)) return data
   return { count: 0, page: 1, page_size: pageSize, total_pages: 1, results: [] }

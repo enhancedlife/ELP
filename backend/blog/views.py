@@ -24,6 +24,39 @@ def _published_qs(request=None):
     return qs.filter(is_public=True)
 
 
+def _archived_qs():
+    """Archived (soft-deleted) posts still listed on /blog/archive; detail page gates private body."""
+    return BlogPost.objects.filter(is_published=True, deleted_at__isnull=False)
+
+
+def _paginate_posts(request, qs, page_param="page", page_size_param="page_size", default_page_size=6):
+    try:
+        page = max(1, int(request.query_params.get(page_param, "1")))
+    except ValueError:
+        page = 1
+    try:
+        page_size = min(24, max(1, int(request.query_params.get(page_size_param, str(default_page_size)))))
+    except ValueError:
+        page_size = default_page_size
+
+    qs = qs.order_by("-published_at", "sort_order")
+    total = qs.count()
+    total_pages = max(1, math.ceil(total / page_size)) if total else 1
+    page = min(page, total_pages)
+    start = (page - 1) * page_size
+    items = qs[start : start + page_size]
+
+    return Response(
+        {
+            "count": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "results": BlogPostPublicSerializer(items, many=True, context={"request": request}).data,
+        }
+    )
+
+
 @api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([AllowAny])
@@ -31,8 +64,9 @@ def blog_posts_list(request):
     """
     GET /api/blog/posts
     ?featured=1 — main /blog grid (featured, max 6)
-    ?page=1&page_size=6 — archive pagination (non-featured by default)
-    ?include_featured=1 — archive includes featured posts too
+    ?archived=1&page=1&page_size=6 — soft-deleted posts for /blog/archive
+    ?page=1&page_size=6 — non-featured active posts (legacy pagination)
+    ?include_featured=1 — pagination includes featured posts too
 
     Guests only receive public posts; authenticated members also see private posts.
     """
@@ -46,6 +80,13 @@ def blog_posts_list(request):
             BlogPostPublicSerializer(qs, many=True, context={"request": request}).data
         )
 
+    if _truthy(request.query_params.get("archived")):
+        return _paginate_posts(request, _archived_qs())
+
+    qs = _published_qs(request).order_by("-published_at", "sort_order")
+    if not _truthy(request.query_params.get("include_featured")):
+        qs = qs.filter(is_featured=False)
+
     try:
         page = max(1, int(request.query_params.get("page", "1")))
     except ValueError:
@@ -54,10 +95,6 @@ def blog_posts_list(request):
         page_size = min(24, max(1, int(request.query_params.get("page_size", "6"))))
     except ValueError:
         page_size = 6
-
-    qs = _published_qs(request).order_by("-published_at", "sort_order")
-    if not _truthy(request.query_params.get("include_featured")):
-        qs = qs.filter(is_featured=False)
 
     total = qs.count()
     total_pages = max(1, math.ceil(total / page_size)) if total else 1
@@ -84,7 +121,6 @@ def blog_post_by_slug(request, slug: str):
         BlogPost,
         slug=slug,
         is_published=True,
-        deleted_at__isnull=True,
     )
     user = getattr(request, "user", None)
     if not post.is_public:

@@ -83,7 +83,7 @@ export function BlogCommentsSection({ slug, membersOnly = false }: BlogCommentsS
 		toast.success("Comment posted");
 	}
 
-	const loginHref = `/auth/login?next=${encodeURIComponent(pathname || `/blog/${slug}`)}`;
+	const loginHref = `/auth/login?redirect=${encodeURIComponent(pathname || `/blog/${slug}`)}`;
 
 	if (membersOnly && !user && !loading) {
 		return (

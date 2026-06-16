@@ -3,6 +3,7 @@ import { BlogContentGate } from "@/components/blog-content-gate"
 export default function SleepOptimizationArticle() {
   return (
     <BlogContentGate
+      commentSlug="sleep-optimization-for-enhanced-athletes"
       title="Sleep Optimization for Enhanced Athletes"
       category="Recovery"
       readTime="7 min read"

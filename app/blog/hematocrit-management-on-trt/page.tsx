@@ -3,6 +3,7 @@ import { BlogContentGate } from "@/components/blog-content-gate"
 export default function HematocritArticle() {
   return (
     <BlogContentGate
+      commentSlug="hematocrit-management-on-trt"
       title="Hematocrit Management on TRT"
       category="TRT / HRT"
       readTime="6 min read"

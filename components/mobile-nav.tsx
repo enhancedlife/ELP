@@ -7,6 +7,7 @@ import { ClientMobileAuth } from "@/components/client-header-auth"
 import { SiteLogo } from "@/components/site-logo"
 import type { SiteBranding } from "@/lib/types"
 import {
+  HOME_NAV_LINK,
   MAIN_NAV_LINKS,
   RESOURCES_HUB_HREF,
   SITE_RESOURCES,
@@ -70,8 +71,8 @@ export function MobileNav({ branding }: { branding?: SiteBranding | null }) {
             <div className="flex shrink-0 items-center justify-between border-b border-white/10 p-6">
               <SiteLogo
                 branding={branding}
-                textClassName="text-xl text-white"
-                imageClassName="h-16 max-w-[320px]"
+                textClassName="text-lg text-white"
+                imageClassName="h-12 max-w-[260px]"
                 onClick={closeMenu}
               />
               <button
@@ -88,7 +89,15 @@ export function MobileNav({ branding }: { branding?: SiteBranding | null }) {
             </div>
 
             <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
-              <div className="border-b border-white/10 pb-4">
+              <Link
+                href={HOME_NAV_LINK.href}
+                onClick={closeMenu}
+                className="block border-b border-white/10 py-4 text-2xl font-heading uppercase leading-normal tracking-wide text-white transition hover:text-green-400"
+              >
+                {HOME_NAV_LINK.title}
+              </Link>
+
+              <div className="border-b border-white/10 pb-4 pt-4">
                 <button
                   type="button"
                   aria-expanded={resourcesOpen}

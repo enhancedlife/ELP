@@ -48,6 +48,12 @@ const sidebarGroups = [
 				badge: null,
 			},
 			{
+				title: "Blog Comments",
+				href: "/dashboard/blog-posts/comments",
+				icon: MessageSquare,
+				badge: null,
+			},
+			{
 				title: "Bulk Mail",
 				href: "/dashboard/email/bulk",
 				icon: MailPlus,

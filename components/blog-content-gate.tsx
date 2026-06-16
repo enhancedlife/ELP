@@ -3,14 +3,17 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { BlogCommentsSection } from "@/components/blog-comments-section"
 import { AUTH_SESSION_CHANGE_EVENT, fetchAuthUser } from "@/lib/auth"
 
 interface BlogContentGateProps {
   children: React.ReactNode
   /** When true, article body is shown without login. */
   isPublic?: boolean
-  /** Shown below the article for all visitors (e.g. public comments). */
+  /** Shown below the article (e.g. comments). Always rendered when set. */
   footer?: React.ReactNode
+  /** Blog post slug — renders the comments block when footer is not provided. */
+  commentSlug?: string
   title: string
   category: string
   readTime: string
@@ -22,6 +25,7 @@ export function BlogContentGate({
   children,
   isPublic = false,
   footer,
+  commentSlug,
   title,
   category,
   readTime,
@@ -59,6 +63,12 @@ export function BlogContentGate({
       window.removeEventListener(AUTH_SESSION_CHANGE_EVENT, checkAuth)
     }
   }, [isPublic])
+
+  const commentsBlock =
+    footer ??
+    (commentSlug ? (
+      <BlogCommentsSection slug={commentSlug} membersOnly={!isPublic} />
+    ) : null)
 
   if (isLoading) {
     return (
@@ -134,7 +144,7 @@ export function BlogContentGate({
             </div>
           )}
 
-          {footer && (isPublic || isAuthenticated) ? <div className="mt-12">{footer}</div> : null}
+          {commentsBlock ? <div className="mt-12">{commentsBlock}</div> : null}
         </div>
       </article>
     </main>
