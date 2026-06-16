@@ -1,67 +1,8 @@
 import Link from "next/link"
 import { getFeaturedBlogPosts } from "@/lib/api/blog"
-import type { BlogPostSummary } from "@/lib/blog"
-
-const fallbackArticles: BlogPostSummary[] = [
-  {
-    slug: "understanding-estradiol-on-trt",
-    title: "Understanding Estradiol on TRT",
-    excerpt: "A comprehensive guide to managing estrogen levels while on testosterone replacement therapy.",
-    category: "TRT / HRT",
-    date: "January 15, 2024",
-    read_time: "8 min read",
-    image: "/images/article-estradiol.jpg",
-  },
-  {
-    slug: "recovery-peptides-explained",
-    title: "Recovery Peptides Explained",
-    excerpt: "An overview of the most popular peptides for healing, recovery, and tissue repair.",
-    category: "Peptides",
-    date: "January 10, 2024",
-    read_time: "10 min read",
-    image: "/images/article-recovery-peptides.jpg",
-  },
-  {
-    slug: "sleep-optimization-for-enhanced-athletes",
-    title: "Sleep Optimization for Enhanced Athletes",
-    excerpt: "Why sleep is the ultimate performance enhancer and how to optimize it.",
-    category: "Recovery",
-    date: "January 5, 2024",
-    read_time: "7 min read",
-    image: "/images/article-sleep.jpg",
-  },
-  {
-    slug: "beginners-guide-to-bpc-157",
-    title: "Beginner's Guide to BPC-157",
-    excerpt: "Everything you need to know about this popular healing peptide.",
-    category: "Peptides",
-    date: "December 28, 2023",
-    read_time: "9 min read",
-    image: "/images/article-bpc157.jpg",
-  },
-  {
-    slug: "hematocrit-management-on-trt",
-    title: "Hematocrit Management on TRT",
-    excerpt: "Understanding and managing elevated hematocrit while on testosterone therapy.",
-    category: "TRT / HRT",
-    date: "December 20, 2023",
-    read_time: "6 min read",
-    image: "/images/article-hematocrit.jpg",
-  },
-  {
-    slug: "the-science-of-growth-hormone-secretagogues",
-    title: "The Science of Growth Hormone Secretagogues",
-    excerpt: "How GH secretagogues work and what the research says about their effects.",
-    category: "Peptides",
-    date: "December 15, 2023",
-    read_time: "12 min read",
-    image: "/images/article-gh-secretagogues.jpg",
-  },
-]
 
 export default async function BlogPage() {
-  const fromApi = await getFeaturedBlogPosts()
-  const articles = fromApi.length > 0 ? fromApi : fallbackArticles
+  const articles = await getFeaturedBlogPosts()
 
   return (
     <main className="min-h-screen text-white pt-24">
@@ -76,6 +17,11 @@ export default async function BlogPage() {
 
       <section className="py-12 px-6">
         <div className="max-w-6xl mx-auto">
+          {articles.length === 0 ? (
+            <p className="text-center text-gray-400 py-12">
+              No published articles yet. Check back soon.
+            </p>
+          ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {articles.map((article) => (
               <Link
@@ -102,6 +48,7 @@ export default async function BlogPage() {
               </Link>
             ))}
           </div>
+          )}
 
           <div className="mt-12 text-center">
             <Link

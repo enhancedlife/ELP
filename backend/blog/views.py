@@ -24,6 +24,11 @@ def _published_qs(request=None):
     return qs.filter(is_public=True)
 
 
+def _blog_listing_qs():
+    """Published, non-archived posts for /blog cards (drafts excluded)."""
+    return BlogPost.objects.filter(is_published=True, deleted_at__isnull=True)
+
+
 def _archived_qs():
     """Archived (soft-deleted) posts still listed on /blog/archive; detail page gates private body."""
     return BlogPost.objects.filter(is_published=True, deleted_at__isnull=False)
@@ -72,7 +77,7 @@ def blog_posts_list(request):
     """
     if _truthy(request.query_params.get("featured")):
         qs = (
-            _published_qs(request)
+            _blog_listing_qs()
             .filter(is_featured=True)
             .order_by("sort_order", "-published_at")[:6]
         )
