@@ -8,7 +8,6 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.utils import timezone
 
-from .default_layout import PLACEHOLDER_FOOTER_EXTRA
 from .email_layout import compose_broadcast_html
 from .email_logging import record_outbound_email
 from .models import EmailBroadcast, EmailBroadcastRecipient, NewsletterSubscriber, OutboundEmailLog
@@ -74,7 +73,6 @@ def _dispatch_one(
             headline=broadcast.headline,
             subject=broadcast.subject,
             body_html=inner_html,
-            for_broadcast=True,
         )
     try:
         msg = EmailMultiAlternatives(

@@ -20,6 +20,10 @@ from rest_framework.authentication import TokenAuthentication
 
 from mailing.email_logging import record_outbound_email
 from mailing.models import OutboundEmailLog
+from mailing.password_reset_email import (
+    build_member_password_reset_bodies,
+    build_password_reset_notice_bodies,
+)
 from mailing.smtp_helpers import smtp_failure_user_message
 
 User = get_user_model()
@@ -378,18 +382,13 @@ def _send_password_reset_mail_or_probe(email: str, user) -> None:
         query = urlencode({"uid": uid, "token": token})
         reset_link = f"{base}/reset-password?{query}"
         subject = settings.MEMBER_PASSWORD_RESET_EMAIL_SUBJECT
-        body = (
-            "Hi,\n\n"
-            "We received a request to reset your password for Your Enhanced Life. "
-            "Open this link to choose a new password:\n\n"
-            f"{reset_link}\n\n"
-            "If you did not request this, you can ignore this email.\n"
-        )
+        body, html_body = build_member_password_reset_bodies(reset_link=reset_link)
         send_outbound_mail(
             subject,
             body,
             resolve_from_email(settings.DEFAULT_FROM_EMAIL),
             [user.email],
+            html_message=html_body,
             fail_silently=False,
         )
         return
@@ -399,34 +398,33 @@ def _send_password_reset_mail_or_probe(email: str, user) -> None:
 
     if user and (user.is_staff or user.is_superuser):
         subject = "Password reset — Your Enhanced Life"
-        body = (
-            "Hi,\n\n"
+        notice = (
             "We received a password reset request for this address. "
             "Staff and administrator accounts do not use the member self-service reset flow. "
             "Use Admin sign-in or Django Admin to manage your password.\n\n"
-            "This message confirms outbound mail from Your Enhanced Life.\n"
+            "This message confirms outbound mail from Your Enhanced Life."
         )
     elif user and not user.is_active:
         subject = "Password reset — Your Enhanced Life"
-        body = (
-            "Hi,\n\n"
+        notice = (
             "We received a password reset request for this address. "
             "This account is not active, so a reset link was not issued.\n\n"
-            "This message confirms outbound mail from Your Enhanced Life.\n"
+            "This message confirms outbound mail from Your Enhanced Life."
         )
     else:
         subject = "Password reset — Your Enhanced Life"
-        body = (
-            "Hi,\n\n"
+        notice = (
             "We received a password reset request for this address. "
             "No member account was found with this email, so no reset link was sent.\n\n"
-            "This message confirms outbound mail from Your Enhanced Life.\n"
+            "This message confirms outbound mail from Your Enhanced Life."
         )
+    body, html_body = build_password_reset_notice_bodies(message=notice)
     send_outbound_mail(
         subject,
         body,
         resolve_from_email(settings.DEFAULT_FROM_EMAIL),
         [email],
+        html_message=html_body,
         fail_silently=False,
     )
 

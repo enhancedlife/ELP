@@ -278,6 +278,10 @@ export default function EmailTemplatePage() {
 						<Card>
 							<CardHeader>
 								<CardTitle className="text-lg">Footer</CardTitle>
+								<p className="text-sm text-muted-foreground font-normal">
+									Copyright and disclaimer text only — no links. Newsletter unsubscribe is added
+									outside the template when sending bulk mail.
+								</p>
 							</CardHeader>
 							<CardContent className="space-y-4">
 								<label className="flex items-center gap-2 text-sm">
@@ -300,16 +304,6 @@ export default function EmailTemplatePage() {
 									/>
 								) : null}
 								<div className="grid gap-2">
-									<Label htmlFor="f-contact">Footer email</Label>
-									<Input
-										id="f-contact"
-										type="email"
-										value={layoutConfig.footer_contact_email}
-										onChange={(e) => patchConfig({ footer_contact_email: e.target.value })}
-										disabled={loading}
-									/>
-								</div>
-								<div className="grid gap-2">
 									<Label htmlFor="f-copy">Copyright line</Label>
 									<Input
 										id="f-copy"
@@ -324,16 +318,6 @@ export default function EmailTemplatePage() {
 										id="f-disc"
 										value={layoutConfig.footer_disclaimer}
 										onChange={(e) => patchConfig({ footer_disclaimer: e.target.value })}
-										disabled={loading}
-									/>
-								</div>
-								<div className="grid gap-2">
-									<Label htmlFor="f-site">Website URL (optional, shown in footer)</Label>
-									<Input
-										id="f-site"
-										value={layoutConfig.footer_site_url}
-										onChange={(e) => patchConfig({ footer_site_url: e.target.value })}
-										placeholder="https://yourenhancedlife.com"
 										disabled={loading}
 									/>
 								</div>

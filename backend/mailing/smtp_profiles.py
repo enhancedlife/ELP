@@ -113,17 +113,38 @@ def send_outbound_mail(
     message: str,
     from_email: str | None,
     recipient_list,
+    *,
+    html_message: str | None = None,
     **kwargs,
 ):
-    from django.core.mail import send_mail
+    """
+    Send plain text mail, or multipart plain + HTML when html_message is provided.
+    """
+    from django.core.mail import EmailMultiAlternatives, send_mail
 
     connection = get_outbound_connection()
+    resolved_from = resolve_from_email(from_email)
+    fail_silently = kwargs.pop("fail_silently", False)
+
+    if html_message:
+        msg = EmailMultiAlternatives(
+            subject,
+            message,
+            resolved_from,
+            recipient_list,
+            connection=connection,
+        )
+        msg.attach_alternative(html_message, "text/html")
+        prepare_outbound_message(msg)
+        return msg.send(fail_silently=fail_silently)
+
     return send_mail(
         subject,
         message,
-        resolve_from_email(from_email),
+        resolved_from,
         recipient_list,
         connection=connection,
+        fail_silently=fail_silently,
         **kwargs,
     )
 

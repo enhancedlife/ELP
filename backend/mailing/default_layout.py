@@ -2,4 +2,3 @@
 
 PLACEHOLDER_TITLE = "{{email_title}}"
 PLACEHOLDER_BODY = "{{email_body}}"
-PLACEHOLDER_FOOTER_EXTRA = "{{email_footer_extra}}"

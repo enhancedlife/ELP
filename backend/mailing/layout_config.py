@@ -7,7 +7,7 @@ import re
 from copy import deepcopy
 from typing import Any
 
-from .default_layout import PLACEHOLDER_BODY, PLACEHOLDER_FOOTER_EXTRA, PLACEHOLDER_TITLE
+from .default_layout import PLACEHOLDER_BODY, PLACEHOLDER_TITLE
 
 HEX_COLOR_RE = re.compile(r"^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$")
 
@@ -22,7 +22,7 @@ DEFAULT_EMAIL_LAYOUT_CONFIG: dict[str, str] = {
     "footer_contact_email": "admin@yourenhancedlife.com",
     "footer_copyright": "© 2026 Your Enhanced Life. All rights reserved.",
     "footer_disclaimer": "Educational content only. Not medical advice.",
-    "footer_site_url": "https://yourenhancedlife.com",
+    "footer_site_url": "",
     "body_bg_color": "#111827",
     "body_text_color": "#d1d5db",
     "title_text_color": "#f9fafb",
@@ -68,9 +68,6 @@ def validate_layout_config(raw: dict[str, Any] | None) -> dict[str, str]:
         cfg[key] = validate_hex_color(cfg[key], key.replace("_", " "))
     if not cfg["header_heading"]:
         raise ValueError("Header heading is required.")
-    email = cfg["footer_contact_email"]
-    if not email or "@" not in email:
-        raise ValueError("Footer contact email is invalid.")
     if not cfg["footer_copyright"]:
         raise ValueError("Footer copyright line is required.")
     if not cfg["footer_disclaimer"]:
@@ -95,16 +92,11 @@ def build_template_from_config(config: dict[str, str] | None) -> str:
     if tagline:
         alt_parts.append(tagline)
     logo_alt = _esc(" — ".join(alt_parts))
-    site_url = (cfg["footer_site_url"].strip() or "https://yourenhancedlife.com").rstrip("/")
 
     if logo:
-        logo_img = (
+        header_block = (
             f'<img src="{_esc(logo)}" alt="{logo_alt}" width="520" '
             f'style="max-width:100%;width:520px;height:auto;margin:0 auto;display:block;border:0;" />'
-        )
-        header_block = (
-            f'<a href="{_esc(site_url)}" style="text-decoration:none;display:inline-block;">'
-            f"{logo_img}</a>"
         )
     else:
         tagline_block = ""
@@ -119,16 +111,6 @@ def build_template_from_config(config: dict[str, str] | None) -> str:
             f"{tagline_block}"
         )
 
-    site_link = ""
-    footer_site = cfg["footer_site_url"].strip()
-    if footer_site:
-        site_link = (
-            f'<p style="margin:8px 0;">'
-            f'<a href="{_esc(footer_site)}" style="color:{_esc(cfg["header_heading_color"])};'
-            f'text-decoration:none;">{_esc(footer_site.replace("https://", "").replace("http://", ""))}</a>'
-            f"</p>"
-        )
-    contact = _esc(cfg["footer_contact_email"])
     outer = _esc(cfg["outer_bg_color"])
     header_bg = _esc(cfg["header_bg_color"])
     body_bg = _esc(cfg["body_bg_color"])
@@ -161,13 +143,8 @@ def build_template_from_config(config: dict[str, str] | None) -> str:
           </tr>
           <tr>
             <td style="background-color:{footer_bg};padding:22px 24px;text-align:center;color:#9ca3af;font-size:14px;line-height:1.6;">
-              {site_link}
               <p style="margin:0 0 8px;font-size:13px;color:#6b7280;">{_esc(cfg["footer_copyright"])}</p>
-              <p style="margin:0 0 10px;font-size:12px;color:#6b7280;">{_esc(cfg["footer_disclaimer"])}</p>
-              <p style="margin:0;">
-                <a href="mailto:{contact}" style="color:{_esc(cfg["header_heading_color"])};text-decoration:none;">{contact}</a>
-              </p>
-              {PLACEHOLDER_FOOTER_EXTRA}
+              <p style="margin:0;font-size:12px;color:#6b7280;">{_esc(cfg["footer_disclaimer"])}</p>
             </td>
           </tr>
         </table>

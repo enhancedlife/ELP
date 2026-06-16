@@ -27,7 +27,7 @@ export const DEFAULT_EMAIL_LAYOUT_CONFIG: EmailLayoutConfig = {
 	footer_contact_email: "admin@yourenhancedlife.com",
 	footer_copyright: "© 2026 Your Enhanced Life. All rights reserved.",
 	footer_disclaimer: "Educational content only. Not medical advice.",
-	footer_site_url: "https://yourenhancedlife.com",
+	footer_site_url: "",
 	body_bg_color: "#111827",
 	body_text_color: "#d1d5db",
 	title_text_color: "#f9fafb",
