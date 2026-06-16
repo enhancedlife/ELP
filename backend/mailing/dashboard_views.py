@@ -34,6 +34,7 @@ from .serializers import (
 )
 from .smtp_helpers import smtp_failure_user_message
 from .smtp_config import delivery_status_payload, outbound_smtp_block_reason
+from .smtp_profiles import prepare_outbound_message, resolve_from_email
 
 
 def _parse_audience_payload(
@@ -217,11 +218,12 @@ def system_email_layout_test_send(request):
         subject=subject,
         body_html=body_html,
     )
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or "noreply@example.com"
+    from_email = resolve_from_email(getattr(settings, "DEFAULT_FROM_EMAIL", None))
     try:
         msg = EmailMultiAlternatives(subject, body_text, from_email, [to])
         if full_html:
             msg.attach_alternative(full_html, "text/html")
+        prepare_outbound_message(msg)
         msg.send(fail_silently=False)
     except Exception as e:  # noqa: BLE001
         raw = str(e)[:3500]

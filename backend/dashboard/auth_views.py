@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
+from mailing.smtp_profiles import resolve_from_email, send_outbound_mail
 from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -385,10 +385,10 @@ def _send_password_reset_mail_or_probe(email: str, user) -> None:
             f"{reset_link}\n\n"
             "If you did not request this, you can ignore this email.\n"
         )
-        send_mail(
+        send_outbound_mail(
             subject,
             body,
-            settings.DEFAULT_FROM_EMAIL,
+            resolve_from_email(settings.DEFAULT_FROM_EMAIL),
             [user.email],
             fail_silently=False,
         )
@@ -422,10 +422,10 @@ def _send_password_reset_mail_or_probe(email: str, user) -> None:
             "No member account was found with this email, so no reset link was sent.\n\n"
             "This message confirms outbound mail from The Swole Republic.\n"
         )
-    send_mail(
+    send_outbound_mail(
         subject,
         body,
-        settings.DEFAULT_FROM_EMAIL,
+        resolve_from_email(settings.DEFAULT_FROM_EMAIL),
         [email],
         fail_silently=False,
     )

@@ -224,6 +224,11 @@ export type DashboardSystemEmailLayout = {
 export type DashboardEmailDeliveryStatus = {
 	smtp_ready: boolean;
 	backend: string;
+	smtp_source: "profile" | "env" | "none" | string;
+	active_profile_id: number | null;
+	active_profile_name: string | null;
+	profiles_count: number;
+	enabled_profiles_count: number;
 	email_host: string;
 	email_port: number;
 	email_use_tls: boolean;
@@ -233,6 +238,27 @@ export type DashboardEmailDeliveryStatus = {
 	email_host_password_set: boolean;
 	debug_mode: boolean;
 	message: string;
+};
+
+export type DashboardSmtpProfile = {
+	id: number;
+	name: string;
+	host: string;
+	port: number;
+	username: string;
+	password?: string;
+	password_set: boolean;
+	use_tls: boolean;
+	use_ssl: boolean;
+	from_email: string;
+	is_enabled: boolean;
+	is_active: boolean;
+	created_at: string;
+	updated_at: string;
+};
+
+export type DashboardSmtpProfilesResponse = {
+	profiles: DashboardSmtpProfile[];
 };
 
 export type DashboardEmailBroadcastStatus =

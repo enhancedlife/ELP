@@ -15,6 +15,7 @@ from sponsors.models import Sponsor
 from mailing.email_logging import record_outbound_email
 from mailing.models import OutboundEmailLog
 from mailing.smtp_helpers import smtp_failure_user_message
+from mailing.smtp_profiles import prepare_outbound_message, resolve_from_email
 
 logger = logging.getLogger(__name__)
 
@@ -152,10 +153,11 @@ def contact_submit(request):
         msg = EmailMessage(
             subject=subject[:989],
             body=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=resolve_from_email(settings.DEFAULT_FROM_EMAIL),
             to=[to_addr],
             reply_to=[email],
         )
+        prepare_outbound_message(msg)
         msg.send(fail_silently=False)
     except (OSError, smtplib.SMTPException) as e:
         logger.exception("contact form EmailMessage.send failed")

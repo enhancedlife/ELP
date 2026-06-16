@@ -12,6 +12,7 @@ from .email_layout import compose_broadcast_html
 from .email_logging import record_outbound_email
 from .models import EmailBroadcast, EmailBroadcastRecipient, NewsletterSubscriber, OutboundEmailLog
 from .smtp_config import outbound_smtp_block_reason
+from .smtp_profiles import prepare_outbound_message, resolve_from_email
 
 User = get_user_model()
 
@@ -70,7 +71,7 @@ def _dispatch_one(
     text_suffix: str,
     html_suffix: str,
 ) -> tuple[bool, str]:
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or "noreply@example.com"
+    from_email = resolve_from_email(getattr(settings, "DEFAULT_FROM_EMAIL", None))
     body = broadcast.body_text + text_suffix
     inner_html = (broadcast.body_html or "").strip()
     html = ""
@@ -92,6 +93,7 @@ def _dispatch_one(
         )
         if html:
             msg.attach_alternative(_merge_html_footer(html, html_suffix), "text/html")
+        prepare_outbound_message(msg)
         msg.send(fail_silently=False)
         return True, ""
     except Exception as e:  # noqa: BLE001

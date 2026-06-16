@@ -1,6 +1,7 @@
 from django.urls import path
 
 from mailing import dashboard_views as mailing_dashboard_views
+from mailing import smtp_profile_views as mailing_smtp_profile_views
 
 from blog import dashboard_views as blog_dashboard_views
 from blog import dashboard_comment_views as blog_dashboard_comment_views
@@ -77,6 +78,17 @@ urlpatterns = [
         mailing_dashboard_views.system_email_layout_test_send,
     ),
     path("email/delivery-status", mailing_dashboard_views.email_delivery_status),
+    path("email/smtp-profiles/import-env", mailing_smtp_profile_views.smtp_profiles_import_env),
+    path(
+        "email/smtp-profiles/<int:pk>/test-send",
+        mailing_smtp_profile_views.smtp_profile_test_send,
+    ),
+    path(
+        "email/smtp-profiles/<int:pk>/activate",
+        mailing_smtp_profile_views.smtp_profile_activate,
+    ),
+    path("email/smtp-profiles/<int:pk>", mailing_smtp_profile_views.smtp_profile_detail),
+    path("email/smtp-profiles", mailing_smtp_profile_views.smtp_profiles_collection),
     path("email/send-logs", mailing_dashboard_views.email_send_logs_collection),
     path("email/template", mailing_dashboard_views.system_email_layout),
     path("email/broadcasts", mailing_dashboard_views.email_broadcasts_collection),

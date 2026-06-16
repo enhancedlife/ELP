@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutTemplate, Mail, MailPlus, ScrollText } from "lucide-react";
+import { LayoutTemplate, Mail, MailPlus, ScrollText, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const EMAIL_TABS = [
 	{ href: "/dashboard/email", label: "Newsletter", icon: Mail },
 	{ href: "/dashboard/email/bulk", label: "Bulk mail", icon: MailPlus },
+	{ href: "/dashboard/email/smtp", label: "SMTP servers", icon: Server },
 	{ href: "/dashboard/email/template", label: "Template", icon: LayoutTemplate },
 	{ href: "/dashboard/email/log", label: "Send log", icon: ScrollText },
 ] as const;

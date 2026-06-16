@@ -1,10 +1,11 @@
 from django.conf import settings
-from django.core.mail import send_mail
 from django.core.management.base import BaseCommand, CommandError
 
 from mailing.email_logging import record_outbound_email
 from mailing.models import OutboundEmailLog
+from mailing.smtp_config import outbound_smtp_block_reason
 from mailing.smtp_helpers import smtp_failure_user_message
+from mailing.smtp_profiles import resolve_from_email, resolve_smtp, send_outbound_mail
 
 
 class Command(BaseCommand):
@@ -25,15 +26,14 @@ class Command(BaseCommand):
         if not to or "@" not in to:
             raise CommandError("Provide a valid recipient address.")
 
-        if settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
-            raise CommandError(
-                "EMAIL_HOST is not set — Django is using the console backend. "
-                "Set EMAIL_* in backend/.env or the environment, then retry."
-            )
+        block = outbound_smtp_block_reason(allow_console_in_debug=False)
+        if block:
+            raise CommandError(block)
 
+        resolved = resolve_smtp()
         try:
-            tls_on = "yes" if settings.EMAIL_USE_TLS else "no"
-            ssl_on = "yes" if settings.EMAIL_USE_SSL else "no"
+            tls_on = "yes" if (resolved.use_tls if resolved else settings.EMAIL_USE_TLS) else "no"
+            ssl_on = "yes" if (resolved.use_ssl if resolved else settings.EMAIL_USE_SSL) else "no"
             body = (
                 "THE SWOLE REPUBLIC\n"
                 "Outbound mail test\n"
@@ -46,20 +46,20 @@ class Command(BaseCommand):
                 "------------------------------------------------------------\n"
                 "Technical summary\n"
                 "------------------------------------------------------------\n"
-                f"From address: {settings.DEFAULT_FROM_EMAIL}\n"
-                f"SMTP host: {settings.EMAIL_HOST}\n"
-                f"Port: {settings.EMAIL_PORT}\n"
+                f"From address: {resolve_from_email()}\n"
+                f"SMTP host: {resolved.host if resolved else settings.EMAIL_HOST}\n"
+                f"Port: {resolved.port if resolved else settings.EMAIL_PORT}\n"
                 f"STARTTLS: {tls_on}\n"
                 f"Implicit SSL: {ssl_on}\n"
-                f"Django mail backend: {settings.EMAIL_BACKEND}\n"
+                f"Source: {resolved.source if resolved else 'unknown'}\n"
                 "\n"
                 "Sent by: manage.py sendtestemail\n"
             )
             subj = "The Swole Republic — SMTP connectivity test"
-            send_mail(
+            send_outbound_mail(
                 subject=subj,
                 message=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=None,
                 recipient_list=[to],
                 fail_silently=False,
             )

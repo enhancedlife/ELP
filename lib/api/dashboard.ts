@@ -19,6 +19,8 @@ import type {
 	DashboardEmailBroadcastsResponse,
 	DashboardEmailDeliveryStatus,
 	DashboardEmailSendLogsResponse,
+	DashboardSmtpProfile,
+	DashboardSmtpProfilesResponse,
 	DashboardLandingPagesResponse,
 	DashboardMessagesInboxResponse,
 	DashboardNewsletterSubscriber,
@@ -460,6 +462,63 @@ export function getDashboardEmailTemplate() {
 
 export function getDashboardEmailDeliveryStatus() {
 	return fetchDashboardJson<DashboardEmailDeliveryStatus>("email/delivery-status");
+}
+
+export function getDashboardSmtpProfiles() {
+	return fetchDashboardJson<DashboardSmtpProfilesResponse>("email/smtp-profiles");
+}
+
+export function postDashboardSmtpProfile(
+	body: Partial<DashboardSmtpProfile> & {
+		name: string;
+		host: string;
+		from_email: string;
+	},
+) {
+	return mutateDashboardJson<DashboardSmtpProfile>(
+		"POST",
+		"email/smtp-profiles",
+		body as Record<string, unknown>,
+	);
+}
+
+export function patchDashboardSmtpProfile(
+	id: number,
+	body: Partial<DashboardSmtpProfile>,
+) {
+	return mutateDashboardJson<DashboardSmtpProfile>(
+		"PATCH",
+		`email/smtp-profiles/${id}`,
+		body as Record<string, unknown>,
+	);
+}
+
+export function deleteDashboardSmtpProfile(id: number) {
+	return mutateDashboardJson<null>("DELETE", `email/smtp-profiles/${id}`);
+}
+
+export function postDashboardSmtpProfileActivate(id: number) {
+	return mutateDashboardJson<DashboardSmtpProfile>(
+		"POST",
+		`email/smtp-profiles/${id}/activate`,
+		{},
+	);
+}
+
+export function postDashboardSmtpProfileTestSend(id: number, to: string) {
+	return mutateDashboardJson<{ detail: string }>(
+		"POST",
+		`email/smtp-profiles/${id}/test-send`,
+		{ to },
+	);
+}
+
+export function postDashboardSmtpProfilesImportEnv() {
+	return mutateDashboardJson<DashboardSmtpProfile>(
+		"POST",
+		"email/smtp-profiles/import-env",
+		{},
+	);
 }
 
 import type { EmailLayoutConfig } from "@/lib/email-layout-config";

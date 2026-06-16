@@ -66,8 +66,8 @@ const sidebarNavItems = [
 		href: "/dashboard/settings/notifications",
 	},
 	{
-		title: "Email template",
-		href: "/dashboard/email/template",
+		title: "SMTP servers",
+		href: "/dashboard/email/smtp",
 	},
 	{
 		title: "Email send log",

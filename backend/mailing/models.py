@@ -138,6 +138,41 @@ class EmailBroadcastRecipient(models.Model):
         return f"{self.email} ({self.status})"
 
 
+class SmtpProfile(models.Model):
+    """Dashboard-managed SMTP server; one active enabled profile sends all outbound mail."""
+
+    name = models.CharField(max_length=128, help_text="Label shown in the admin UI.")
+    host = models.CharField(max_length=255)
+    port = models.PositiveIntegerField(default=587)
+    username = models.CharField(max_length=255, blank=True, default="")
+    password = models.CharField(max_length=255, blank=True, default="")
+    use_tls = models.BooleanField(default=True)
+    use_ssl = models.BooleanField(default=False)
+    from_email = models.EmailField()
+    is_enabled = models.BooleanField(
+        default=True,
+        help_text="Disabled profiles cannot be selected for sending.",
+    )
+    is_active = models.BooleanField(
+        default=False,
+        help_text="The active profile is used for all outbound mail.",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-is_active", "name"]
+
+    def __str__(self) -> str:
+        flags = []
+        if self.is_active:
+            flags.append("active")
+        if not self.is_enabled:
+            flags.append("disabled")
+        suffix = f" ({', '.join(flags)})" if flags else ""
+        return f"{self.name}{suffix}"
+
+
 class OutboundEmailLog(models.Model):
     """
     One row per SMTP attempt (broadcast recipient, template test, password reset, etc.).
