@@ -218,12 +218,12 @@ def system_email_layout_test_send(request):
         subject=subject,
         body_html=body_html,
     )
-    from_email = resolve_from_email(getattr(settings, "DEFAULT_FROM_EMAIL", None))
+    from_email = resolve_from_email(getattr(settings, "DEFAULT_FROM_EMAIL", None), smtp_source="profile")
     try:
         msg = EmailMultiAlternatives(subject, body_text, from_email, [to])
         if full_html:
             msg.attach_alternative(full_html, "text/html")
-        prepare_outbound_message(msg)
+        prepare_outbound_message(msg, smtp_source="profile")
         msg.send(fail_silently=False)
     except Exception as e:  # noqa: BLE001
         raw = str(e)[:3500]

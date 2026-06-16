@@ -1,14 +1,17 @@
-"""Resolve and use dashboard SMTP profiles for outbound mail."""
+"""Resolve and use SMTP for outbound mail (env Zoho vs dashboard bulk profiles)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from django.conf import settings
 from django.core.mail import get_connection
 from django.db import transaction
 
 from .models import SmtpProfile
+
+SmtpSource = Literal["env", "profile"]
 
 
 @dataclass(frozen=True)
@@ -20,7 +23,7 @@ class ResolvedSmtp:
     use_tls: bool
     use_ssl: bool
     from_email: str
-    source: str  # "profile" | "env"
+    source: SmtpSource
     profile_id: int | None = None
     profile_name: str | None = None
 
@@ -29,22 +32,8 @@ def get_active_smtp_profile() -> SmtpProfile | None:
     return SmtpProfile.objects.filter(is_active=True, is_enabled=True).first()
 
 
-def resolve_smtp() -> ResolvedSmtp | None:
-    profile = get_active_smtp_profile()
-    if profile:
-        return ResolvedSmtp(
-            host=profile.host.strip(),
-            port=int(profile.port or 587),
-            username=(profile.username or "").strip(),
-            password=profile.password or "",
-            use_tls=bool(profile.use_tls),
-            use_ssl=bool(profile.use_ssl),
-            from_email=(profile.from_email or "").strip(),
-            source="profile",
-            profile_id=profile.id,
-            profile_name=profile.name,
-        )
-
+def resolve_env_smtp() -> ResolvedSmtp | None:
+    """Transactional mail (contact form, password reset) — always from backend/.env."""
     host = (getattr(settings, "EMAIL_HOST", None) or "").strip()
     if not host:
         return None
@@ -60,8 +49,33 @@ def resolve_smtp() -> ResolvedSmtp | None:
     )
 
 
-def get_outbound_connection():
-    resolved = resolve_smtp()
+def resolve_profile_smtp() -> ResolvedSmtp | None:
+    """Bulk / dashboard template test — active SMTP profile from the web UI."""
+    profile = get_active_smtp_profile()
+    if not profile:
+        return None
+    return ResolvedSmtp(
+        host=profile.host.strip(),
+        port=int(profile.port or 587),
+        username=(profile.username or "").strip(),
+        password=profile.password or "",
+        use_tls=bool(profile.use_tls),
+        use_ssl=bool(profile.use_ssl),
+        from_email=(profile.from_email or "").strip(),
+        source="profile",
+        profile_id=profile.id,
+        profile_name=profile.name,
+    )
+
+
+def resolve_smtp(*, smtp_source: SmtpSource = "profile") -> ResolvedSmtp | None:
+    if smtp_source == "env":
+        return resolve_env_smtp()
+    return resolve_profile_smtp()
+
+
+def get_outbound_connection(*, smtp_source: SmtpSource = "profile"):
+    resolved = resolve_smtp(smtp_source=smtp_source)
     if not resolved or not resolved.host:
         return get_connection()
     return get_connection(
@@ -76,10 +90,10 @@ def get_outbound_connection():
     )
 
 
-def resolve_from_email(override: str | None = None) -> str:
+def resolve_from_email(override: str | None = None, *, smtp_source: SmtpSource = "profile") -> str:
     if override and str(override).strip():
         return str(override).strip()
-    resolved = resolve_smtp()
+    resolved = resolve_smtp(smtp_source=smtp_source)
     if resolved and resolved.from_email:
         return resolved.from_email
     return (getattr(settings, "DEFAULT_FROM_EMAIL", None) or "").strip()
@@ -98,13 +112,11 @@ def get_connection_for_profile(profile: SmtpProfile):
     )
 
 
-def prepare_outbound_message(msg):
-    """Attach the active SMTP connection and default from address to a message."""
-    msg.connection = get_outbound_connection()
-    if not getattr(msg, "from_email", None):
-        msg.from_email = resolve_from_email()
-    elif not str(msg.from_email).strip():
-        msg.from_email = resolve_from_email()
+def prepare_outbound_message(msg, *, smtp_source: SmtpSource = "profile"):
+    """Attach SMTP connection and from address for the chosen source."""
+    msg.connection = get_outbound_connection(smtp_source=smtp_source)
+    if not getattr(msg, "from_email", None) or not str(msg.from_email).strip():
+        msg.from_email = resolve_from_email(smtp_source=smtp_source)
     return msg
 
 
@@ -115,15 +127,17 @@ def send_outbound_mail(
     recipient_list,
     *,
     html_message: str | None = None,
+    smtp_source: SmtpSource = "env",
     **kwargs,
 ):
     """
     Send plain text mail, or multipart plain + HTML when html_message is provided.
+    Contact form and password reset use smtp_source=\"env\" (Zoho in backend/.env).
     """
     from django.core.mail import EmailMultiAlternatives, send_mail
 
-    connection = get_outbound_connection()
-    resolved_from = resolve_from_email(from_email)
+    connection = get_outbound_connection(smtp_source=smtp_source)
+    resolved_from = resolve_from_email(from_email, smtp_source=smtp_source)
     fail_silently = kwargs.pop("fail_silently", False)
 
     if html_message:
@@ -135,7 +149,6 @@ def send_outbound_mail(
             connection=connection,
         )
         msg.attach_alternative(html_message, "text/html")
-        prepare_outbound_message(msg)
         return msg.send(fail_silently=fail_silently)
 
     return send_mail(

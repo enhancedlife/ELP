@@ -3,15 +3,15 @@ from django.core.management.base import BaseCommand, CommandError
 
 from mailing.email_logging import record_outbound_email
 from mailing.models import OutboundEmailLog
-from mailing.smtp_config import outbound_smtp_block_reason
+from mailing.smtp_config import env_smtp_block_reason, profile_smtp_block_reason
 from mailing.smtp_helpers import smtp_failure_user_message
 from mailing.smtp_profiles import resolve_from_email, resolve_smtp, send_outbound_mail
 
 
 class Command(BaseCommand):
     help = (
-        "Send one test message using the configured SMTP backend. "
-        "Use this to verify Elastic Email (or any provider) from the same environment as production."
+        "Send one test message using SMTP. Default: backend/.env (Zoho — contact & password reset). "
+        "Use --bulk to test the active dashboard bulk-mail SMTP profile instead."
     )
 
     def add_arguments(self, parser):
@@ -20,17 +20,28 @@ class Command(BaseCommand):
             type=str,
             help="Recipient email address",
         )
+        parser.add_argument(
+            "--bulk",
+            action="store_true",
+            help="Use the active bulk-mail SMTP profile from the dashboard instead of backend/.env",
+        )
 
     def handle(self, *args, **options):
         to = (options["to"] or "").strip()
         if not to or "@" not in to:
             raise CommandError("Provide a valid recipient address.")
 
-        block = outbound_smtp_block_reason(allow_console_in_debug=False)
+        use_bulk = bool(options.get("bulk"))
+        smtp_source = "profile" if use_bulk else "env"
+        block = (
+            profile_smtp_block_reason(allow_console_in_debug=False)
+            if use_bulk
+            else env_smtp_block_reason(allow_console_in_debug=False)
+        )
         if block:
             raise CommandError(block)
 
-        resolved = resolve_smtp()
+        resolved = resolve_smtp(smtp_source=smtp_source)
         try:
             tls_on = "yes" if (resolved.use_tls if resolved else settings.EMAIL_USE_TLS) else "no"
             ssl_on = "yes" if (resolved.use_ssl if resolved else settings.EMAIL_USE_SSL) else "no"
@@ -46,7 +57,7 @@ class Command(BaseCommand):
                 "------------------------------------------------------------\n"
                 "Technical summary\n"
                 "------------------------------------------------------------\n"
-                f"From address: {resolve_from_email()}\n"
+                f"From address: {resolve_from_email(smtp_source=smtp_source)}\n"
                 f"SMTP host: {resolved.host if resolved else settings.EMAIL_HOST}\n"
                 f"Port: {resolved.port if resolved else settings.EMAIL_PORT}\n"
                 f"STARTTLS: {tls_on}\n"
@@ -61,6 +72,7 @@ class Command(BaseCommand):
                 message=body,
                 from_email=None,
                 recipient_list=[to],
+                smtp_source=smtp_source,
                 fail_silently=False,
             )
         except OSError as e:

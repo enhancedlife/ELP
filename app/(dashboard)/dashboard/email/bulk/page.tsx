@@ -674,19 +674,16 @@ export default function BulkMailPage() {
 	return (
 		<div className="space-y-8">
 			<EmailSectionNav />
-			{deliveryStatus && !deliveryStatus.smtp_ready ? (
+			{deliveryStatus && !(deliveryStatus.bulk_smtp_ready ?? deliveryStatus.smtp_ready) ? (
 				<p className="text-sm text-amber-900 dark:text-amber-100 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-lg px-4 py-3">
-					<strong>Email will not be delivered.</strong> {deliveryStatus.message}
-					{deliveryStatus.backend.includes("console") ? (
-						<>
-							{" "}
-							On the live server, copy your SMTP settings from{" "}
-							<code className="rounded bg-muted px-1">backend/.env</code> into the{" "}
-							<strong>root</strong> <code className="rounded bg-muted px-1">.env</code> next to{" "}
-							<code className="rounded bg-muted px-1">docker-compose.yml</code>, then run{" "}
-							<code className="rounded bg-muted px-1">docker compose up -d backend</code>.
-						</>
-					) : null}
+					<strong>Bulk mail will not be delivered.</strong>{" "}
+					{deliveryStatus.bulk_message ?? deliveryStatus.message} Add an active SMTP server
+					under{" "}
+					<Link href="/dashboard/email/smtp" className="underline">
+						Email → SMTP servers
+					</Link>
+					. Contact form and password reset use Zoho SMTP from{" "}
+					<code className="rounded bg-muted px-1">backend/.env</code> separately.
 				</p>
 			) : null}
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

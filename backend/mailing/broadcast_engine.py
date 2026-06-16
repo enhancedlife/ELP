@@ -61,7 +61,7 @@ def _dispatch_one(
     text_suffix: str,
     html_suffix: str,
 ) -> tuple[bool, str]:
-    from_email = resolve_from_email(getattr(settings, "DEFAULT_FROM_EMAIL", None))
+    from_email = resolve_from_email(getattr(settings, "DEFAULT_FROM_EMAIL", None), smtp_source="profile")
     body = broadcast.body_text + text_suffix
     inner_html = (broadcast.body_html or "").strip()
     html = ""
@@ -83,7 +83,7 @@ def _dispatch_one(
         )
         if html:
             msg.attach_alternative(_merge_html_footer(html, html_suffix), "text/html")
-        prepare_outbound_message(msg)
+        prepare_outbound_message(msg, smtp_source="profile")
         msg.send(fail_silently=False)
         return True, ""
     except Exception as e:  # noqa: BLE001

@@ -14,6 +14,7 @@ from sponsors.models import Sponsor
 
 from mailing.email_logging import record_outbound_email
 from mailing.models import OutboundEmailLog
+from mailing.smtp_config import env_smtp_block_reason
 from mailing.smtp_helpers import smtp_failure_user_message
 from mailing.smtp_profiles import prepare_outbound_message, resolve_from_email
 
@@ -149,15 +150,21 @@ def contact_submit(request):
     subject = f"[YEL Contact] {issue_label} — {name}"
 
     to_addr = _contact_recipient()
+    smtp_block = env_smtp_block_reason()
+    if smtp_block:
+        return Response(
+            {"detail": smtp_block},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     try:
         msg = EmailMessage(
             subject=subject[:989],
             body=body,
-            from_email=resolve_from_email(settings.DEFAULT_FROM_EMAIL),
+            from_email=resolve_from_email(settings.DEFAULT_FROM_EMAIL, smtp_source="env"),
             to=[to_addr],
             reply_to=[email],
         )
-        prepare_outbound_message(msg)
+        prepare_outbound_message(msg, smtp_source="env")
         msg.send(fail_silently=False)
     except (OSError, smtplib.SMTPException) as e:
         logger.exception("contact form EmailMessage.send failed")

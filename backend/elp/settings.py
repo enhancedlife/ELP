@@ -245,10 +245,10 @@ DASHBOARD_ALLOW_STAFF_MANAGERS = (
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ---------------------------------------------------------------------------
-# Outbound email (single SMTP config for everything)
+# Transactional SMTP (backend/.env — Zoho)
 # ---------------------------------------------------------------------------
-# Used by: password reset (send_mail), newsletter/promotional broadcasts
-# (mailing.send_broadcast → EmailMultiAlternatives), and any other django.core.mail usage.
+# Used by: contact form, password reset, and other member transactional mail.
+# Bulk / newsletter mail uses dashboard SMTP profiles (Dashboard → Email → SMTP servers).
 #
 # Primary (documented in backend/.env.example): Zoho Mail Australia
 #   EMAIL_HOST=smtp.zoho.com.au

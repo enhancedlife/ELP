@@ -195,7 +195,9 @@ export default function DashboardSmtpSettingsPage() {
 			<div>
 				<h1 className="text-2xl font-bold tracking-tight">Email</h1>
 				<p className="text-sm text-muted-foreground">
-					Manage SMTP servers used for newsletters, password resets, and contact form mail.
+					SMTP servers here are used for <strong>bulk mail</strong> and template test sends. Contact
+					form and password reset always use Zoho SMTP from{" "}
+					<code className="rounded bg-muted px-1">backend/.env</code>.
 				</p>
 			</div>
 
@@ -210,28 +212,51 @@ export default function DashboardSmtpSettingsPage() {
 			{delivery ? (
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-base">Current delivery</CardTitle>
-						<CardDescription>{delivery.message}</CardDescription>
+						<CardTitle className="text-base">Delivery status</CardTitle>
+						<CardDescription>
+							Bulk mail and transactional mail use separate SMTP configuration.
+						</CardDescription>
 					</CardHeader>
-					<CardContent className="text-sm text-muted-foreground space-y-1">
-						<p>
-							Status:{" "}
-							{delivery.smtp_ready ? (
-								<span className="text-green-600 font-medium">Ready</span>
-							) : (
-								<span className="text-amber-600 font-medium">Not configured</span>
-							)}
-						</p>
-						{delivery.active_profile_name ? (
+					<CardContent className="text-sm text-muted-foreground space-y-3">
+						<div>
+							<p className="font-medium text-foreground">Bulk mail (this page)</p>
 							<p>
-								Active profile: <strong>{delivery.active_profile_name}</strong>
+								Status:{" "}
+								{(delivery.bulk_smtp_ready ?? delivery.smtp_ready) ? (
+									<span className="text-green-600 font-medium">Ready</span>
+								) : (
+									<span className="text-amber-600 font-medium">Not configured</span>
+								)}
 							</p>
-						) : null}
-						{delivery.email_host ? (
+							<p>{delivery.bulk_message ?? delivery.message}</p>
+							{delivery.active_profile_name ? (
+								<p>
+									Active profile: <strong>{delivery.active_profile_name}</strong>
+								</p>
+							) : null}
+							{delivery.profile_smtp?.host ? (
+								<p>
+									Host: {delivery.profile_smtp.host}:{delivery.profile_smtp.port ?? delivery.email_port}
+								</p>
+							) : null}
+						</div>
+						<div>
+							<p className="font-medium text-foreground">Contact &amp; password reset (backend/.env)</p>
 							<p>
-								Host: {delivery.email_host}:{delivery.email_port} · From: {delivery.default_from_email}
+								Status:{" "}
+								{delivery.transactional_smtp_ready ? (
+									<span className="text-green-600 font-medium">Ready</span>
+								) : (
+									<span className="text-amber-600 font-medium">Not configured</span>
+								)}
 							</p>
-						) : null}
+							<p>{delivery.transactional_message ?? "Set EMAIL_HOST, EMAIL_HOST_USER, and EMAIL_HOST_PASSWORD in backend/.env."}</p>
+							{delivery.env_smtp?.host ? (
+								<p>
+									Host: {delivery.env_smtp.host} · From: {delivery.env_smtp.from_email}
+								</p>
+							) : null}
+						</div>
 					</CardContent>
 				</Card>
 			) : null}
@@ -250,8 +275,9 @@ export default function DashboardSmtpSettingsPage() {
 				<CardHeader>
 					<CardTitle>SMTP servers</CardTitle>
 					<CardDescription>
-						Enable a server and set one as <strong>Active</strong> to use it for all outbound mail.
-						If none are active, the server falls back to EMAIL_* environment variables.
+						Enable a server and set one as <strong>Active</strong> for bulk mail and newsletter
+						sends. Contact form and password reset are not affected — they use{" "}
+						<code className="text-xs">backend/.env</code> only.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">

@@ -24,6 +24,7 @@ from mailing.password_reset_email import (
     build_member_password_reset_bodies,
     build_password_reset_notice_bodies,
 )
+from mailing.smtp_config import env_smtp_block_reason
 from mailing.smtp_helpers import smtp_failure_user_message
 
 User = get_user_model()
@@ -386,9 +387,10 @@ def _send_password_reset_mail_or_probe(email: str, user) -> None:
         send_outbound_mail(
             subject,
             body,
-            resolve_from_email(settings.DEFAULT_FROM_EMAIL),
+            resolve_from_email(settings.DEFAULT_FROM_EMAIL, smtp_source="env"),
             [user.email],
             html_message=html_body,
+            smtp_source="env",
             fail_silently=False,
         )
         return
@@ -422,9 +424,10 @@ def _send_password_reset_mail_or_probe(email: str, user) -> None:
     send_outbound_mail(
         subject,
         body,
-        resolve_from_email(settings.DEFAULT_FROM_EMAIL),
+        resolve_from_email(settings.DEFAULT_FROM_EMAIL, smtp_source="env"),
         [email],
         html_message=html_body,
+        smtp_source="env",
         fail_silently=False,
     )
 
@@ -445,6 +448,12 @@ def password_reset_request(request):
     user = User.objects.filter(email__iexact=email).first()
     log_to = _password_reset_log_to(user, email)
     log_subj = _password_reset_log_subject(user)[:998]
+    smtp_block = env_smtp_block_reason()
+    if smtp_block:
+        return Response(
+            {"detail": smtp_block},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     try:
         _send_password_reset_mail_or_probe(email, user)
     except (OSError, smtplib.SMTPException) as e:
