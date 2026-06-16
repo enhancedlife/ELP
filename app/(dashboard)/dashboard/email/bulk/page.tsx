@@ -13,6 +13,8 @@ import {
 	Play,
 	Square,
 	RefreshCw,
+	Copy,
+	History,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -111,6 +113,33 @@ function statusLabel(status: string): string {
 	}
 }
 
+function loadMessageContentOnly(
+	broadcast: DashboardEmailBroadcast,
+	setters: {
+		setSubject: (v: string) => void;
+		setHeadline: (v: string) => void;
+		setVisualBody: (v: string) => void;
+		setHtmlSource: (v: string) => void;
+		setPlainText: (v: string) => void;
+		setEditorMode: (v: EditorMode) => void;
+	},
+) {
+	setters.setSubject(broadcast.subject);
+	setters.setHeadline(broadcast.headline || "");
+	const html = (broadcast.body_html || "").trim();
+	if (html) {
+		setters.setEditorMode("html");
+		setters.setHtmlSource(html);
+		setters.setPlainText(broadcast.body_text || "");
+		setters.setVisualBody("");
+	} else {
+		setters.setEditorMode("visual");
+		setters.setVisualBody(broadcast.body_text || "");
+		setters.setHtmlSource("");
+		setters.setPlainText("");
+	}
+}
+
 function loadMessageIntoEditor(
 	broadcast: DashboardEmailBroadcast,
 	setters: {
@@ -125,23 +154,10 @@ function loadMessageIntoEditor(
 		setManualEmailsText: (v: string) => void;
 	},
 ) {
-	setters.setSubject(broadcast.subject);
-	setters.setHeadline(broadcast.headline || "");
+	loadMessageContentOnly(broadcast, setters);
 	setters.setAudience((broadcast.audience as Audience) || "newsletter");
 	setters.setSelectedIds(new Set(broadcast.audience_user_ids || []));
 	setters.setManualEmailsText(formatEmailListForInput(broadcast.audience_emails));
-	const html = (broadcast.body_html || "").trim();
-	if (html) {
-		setters.setEditorMode("html");
-		setters.setHtmlSource(html);
-		setters.setPlainText(broadcast.body_text || "");
-		setters.setVisualBody("");
-	} else {
-		setters.setEditorMode("visual");
-		setters.setVisualBody(broadcast.body_text || "");
-		setters.setHtmlSource("");
-		setters.setPlainText("");
-	}
 }
 
 export default function BulkMailPage() {
@@ -350,9 +366,7 @@ export default function BulkMailPage() {
 
 	const formLocked =
 		activeBatch != null &&
-		(activeBatch.status === "sending" ||
-			activeBatch.status === "paused" ||
-			(TERMINAL_STATUSES.has(activeBatch.status) && activeBatch.recipient_count > 0));
+		(activeBatch.status === "sending" || activeBatch.status === "paused");
 
 	function toggleEditorMode(next: EditorMode) {
 		if (formLocked) return;
@@ -481,7 +495,44 @@ export default function BulkMailPage() {
 		setRecipientsTotal(0);
 	}
 
+	async function reuseBatchMessage(b: DashboardEmailBroadcast) {
+		let source = b;
+		if (!b.body_html?.trim() && !b.body_text?.trim()) {
+			const res = await getDashboardEmailBroadcast(b.id);
+			if (res.ok && res.data) source = res.data;
+		}
+		setDraftId(null);
+		setActiveBatch(null);
+		loadMessageContentOnly(source, {
+			setSubject,
+			setHeadline,
+			setVisualBody,
+			setHtmlSource,
+			setPlainText,
+			setEditorMode,
+		});
+		setAudience("newsletter");
+		setSelectedIds(new Set());
+		setManualEmailsText("");
+		setRecipients([]);
+		setRecipientsTotal(0);
+		toast.success("Message loaded — choose new recipients and send.");
+	}
+
+	async function viewBatchHistory(b: DashboardEmailBroadcast) {
+		setDraftId(null);
+		setActiveBatch(b);
+		void loadRecipients(b.id, recipientTab);
+		if (b.status === "sending" && !pollRef.current) {
+			void runSendLoop(b.id);
+		}
+	}
+
 	async function openDraft(b: DashboardEmailBroadcast) {
+		if (TERMINAL_STATUSES.has(b.status)) {
+			await reuseBatchMessage(b);
+			return;
+		}
 		setDraftId(b.status === "draft" ? b.id : null);
 		setActiveBatch(b.status === "draft" ? null : b);
 		loadMessageIntoEditor(b, {
@@ -658,26 +709,72 @@ export default function BulkMailPage() {
 			{drafts.length > 0 ? (
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-lg">Saved drafts & recent batches</CardTitle>
+						<CardTitle className="text-lg">Saved drafts & past sends</CardTitle>
+						<p className="text-sm text-muted-foreground font-normal">
+							Click a sent batch to load its message into a new send. Use View to see delivery
+							history without changing the editor.
+						</p>
 					</CardHeader>
 					<CardContent>
-						<div className="max-h-48 overflow-y-auto rounded-md border divide-y">
-							{drafts.map((b) => (
-								<button
-									key={b.id}
-									type="button"
-									className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-muted/50"
-									onClick={() => void openDraft(b)}
-								>
-									<span className="truncate font-medium">{b.subject || "(no subject)"}</span>
-									<span className="shrink-0 text-xs text-muted-foreground">
-										{statusLabel(b.status)}
-										{b.recipient_count > 0
-											? ` · ${b.sent_ok_count}/${b.recipient_count}`
-											: ""}
-									</span>
-								</button>
-							))}
+						<div className="max-h-64 overflow-y-auto rounded-md border divide-y">
+							{drafts.map((b) => {
+								const isTerminal = TERMINAL_STATUSES.has(b.status);
+								return (
+									<div
+										key={b.id}
+										className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/50"
+									>
+										<button
+											type="button"
+											className="min-w-0 flex-1 text-left text-sm"
+											onClick={() => void openDraft(b)}
+										>
+											<span className="block truncate font-medium">
+												{b.subject || "(no subject)"}
+											</span>
+											<span className="text-xs text-muted-foreground">
+												{statusLabel(b.status)}
+												{b.recipient_count > 0
+													? ` · ${b.sent_ok_count}/${b.recipient_count} sent`
+													: ""}
+												{b.created_at
+													? ` · ${new Date(b.created_at).toLocaleDateString()}`
+													: ""}
+											</span>
+										</button>
+										<div className="flex shrink-0 items-center gap-1">
+											{isTerminal ? (
+												<>
+													<Button
+														type="button"
+														variant="ghost"
+														size="sm"
+														className="h-8 px-2"
+														title="Load message into editor"
+														onClick={() => void reuseBatchMessage(b)}
+													>
+														<Copy className="h-4 w-4" />
+														<span className="sr-only">Reuse message</span>
+													</Button>
+													{b.recipient_count > 0 ? (
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															className="h-8 px-2"
+															title="View send history"
+															onClick={() => void viewBatchHistory(b)}
+														>
+															<History className="h-4 w-4" />
+															<span className="sr-only">View batch</span>
+														</Button>
+													) : null}
+												</>
+											) : null}
+										</div>
+									</div>
+								);
+							})}
 						</div>
 					</CardContent>
 				</Card>
@@ -1086,7 +1183,7 @@ export default function BulkMailPage() {
 						</Button>
 						<Button
 							type="button"
-							disabled={saving || sending || (formLocked && activeBatch?.status !== "draft")}
+							disabled={saving || sending || formLocked}
 							onClick={() => void sendBulk()}
 						>
 							{sending ? (
