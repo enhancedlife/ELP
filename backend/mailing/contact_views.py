@@ -3,7 +3,6 @@ import smtplib
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMessage
 from django.core.validators import validate_email
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -16,7 +15,8 @@ from mailing.email_logging import record_outbound_email
 from mailing.models import OutboundEmailLog
 from mailing.smtp_config import env_smtp_block_reason
 from mailing.smtp_helpers import smtp_failure_user_message
-from mailing.smtp_profiles import prepare_outbound_message, resolve_from_email
+from mailing.smtp_profiles import resolve_from_email, send_outbound_mail
+from mailing.transactional_email import build_contact_form_bodies
 
 logger = logging.getLogger(__name__)
 
@@ -123,29 +123,14 @@ def contact_submit(request):
 
     issue_label = ISSUE_LABELS[issue_type]
     sponsor_block = _sponsor_line_from_selection(sponsor_selection)
-    body_lines = [
-        "New message from the website contact form",
-        "",
-        f"Issue type: {issue_label}",
-    ]
-    if sponsor_block:
-        body_lines.append(sponsor_block)
-    if related_username:
-        body_lines.append(f"Username (for this issue): {related_username}")
-    body_lines.extend(
-        [
-            "",
-            f"Name: {name}",
-            f"Email: {email}",
-            "",
-            "Message:",
-            message,
-            "",
-            "---",
-            f"Reply directly to this email to reach {email}.",
-        ]
+    body, html_body = build_contact_form_bodies(
+        issue_label=issue_label,
+        name=name,
+        email=email,
+        message=message,
+        sponsor_line=sponsor_block,
+        related_username=related_username,
     )
-    body = "\n".join(body_lines)
 
     subject = f"[YEL Contact] {issue_label} — {name}"
 
@@ -157,15 +142,16 @@ def contact_submit(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     try:
-        msg = EmailMessage(
-            subject=subject[:989],
-            body=body,
-            from_email=resolve_from_email(settings.DEFAULT_FROM_EMAIL, smtp_source="env"),
-            to=[to_addr],
+        send_outbound_mail(
+            subject[:989],
+            body,
+            resolve_from_email(settings.DEFAULT_FROM_EMAIL, smtp_source="env"),
+            [to_addr],
+            html_message=html_body,
+            smtp_source="env",
             reply_to=[email],
+            fail_silently=False,
         )
-        prepare_outbound_message(msg, smtp_source="env")
-        msg.send(fail_silently=False)
     except (OSError, smtplib.SMTPException) as e:
         logger.exception("contact form EmailMessage.send failed")
         record_outbound_email(

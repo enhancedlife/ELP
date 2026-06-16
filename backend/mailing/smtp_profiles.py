@@ -128,6 +128,7 @@ def send_outbound_mail(
     *,
     html_message: str | None = None,
     smtp_source: SmtpSource = "env",
+    reply_to: list[str] | None = None,
     **kwargs,
 ):
     """
@@ -149,6 +150,8 @@ def send_outbound_mail(
             connection=connection,
         )
         msg.attach_alternative(html_message, "text/html")
+        if reply_to:
+            msg.reply_to = list(reply_to)
         return msg.send(fail_silently=fail_silently)
 
     return send_mail(
