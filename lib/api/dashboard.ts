@@ -553,6 +553,8 @@ export function postDashboardEmailBroadcast(body: {
 	audience?: "newsletter" | "all_site_users" | "selected_site_users" | "manual_emails";
 	audience_user_ids?: number[];
 	audience_emails?: string[];
+	batch_email_count?: number;
+	batch_interval_minutes?: number;
 }) {
 	return mutateDashboardJson<DashboardEmailBroadcast>(
 		"POST",
@@ -575,6 +577,8 @@ export function patchDashboardEmailBroadcast(
 		audience: "newsletter" | "all_site_users" | "selected_site_users" | "manual_emails";
 		audience_user_ids: number[];
 		audience_emails: string[];
+		batch_email_count: number;
+		batch_interval_minutes: number;
 	}>,
 ) {
 	return mutateDashboardJson<DashboardEmailBroadcast>(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
@@ -17,6 +19,41 @@ from .smtp_profiles import prepare_outbound_message, resolve_from_email
 User = get_user_model()
 
 CHUNK_SIZE = 12
+DEFAULT_BATCH_EMAIL_COUNT = 20
+DEFAULT_BATCH_INTERVAL_MINUTES = 5
+
+
+def _batch_email_limit(broadcast: EmailBroadcast) -> int:
+    count = broadcast.batch_email_count or DEFAULT_BATCH_EMAIL_COUNT
+    return max(1, int(count))
+
+
+def _batch_interval(broadcast: EmailBroadcast) -> timedelta:
+    minutes = broadcast.batch_interval_minutes
+    if minutes is None:
+        minutes = DEFAULT_BATCH_INTERVAL_MINUTES
+    return timedelta(minutes=max(0, int(minutes)))
+
+
+def _can_send_next_batch(broadcast: EmailBroadcast) -> bool:
+    interval = _batch_interval(broadcast)
+    if interval <= timedelta(0):
+        return True
+    if broadcast.last_batch_at is None:
+        return True
+    return timezone.now() >= broadcast.last_batch_at + interval
+
+
+def next_batch_at(broadcast: EmailBroadcast):
+    """Return datetime when the next wave may start, or None if ready now."""
+    if broadcast.status != EmailBroadcast.Status.SENDING:
+        return None
+    if (broadcast.pending_count or 0) <= 0:
+        return None
+    interval = _batch_interval(broadcast)
+    if interval <= timedelta(0) or broadcast.last_batch_at is None:
+        return None
+    return broadcast.last_batch_at + interval
 
 
 def _public_site_base() -> str:
@@ -201,6 +238,7 @@ def prepare_broadcast_recipients(
     broadcast.started_at = timezone.now()
     broadcast.completed_at = None
     broadcast.sent_at = None
+    broadcast.last_batch_at = None
     broadcast.error_summary = ""
     broadcast.save(
         update_fields=[
@@ -213,6 +251,7 @@ def prepare_broadcast_recipients(
             "started_at",
             "completed_at",
             "sent_at",
+            "last_batch_at",
             "error_summary",
         ]
     )
@@ -257,21 +296,26 @@ def _finalize_if_complete(broadcast: EmailBroadcast) -> EmailBroadcast:
 def process_broadcast_chunk(
     broadcast: EmailBroadcast,
     *,
-    limit: int = CHUNK_SIZE,
+    limit: int | None = None,
 ) -> EmailBroadcast:
     if broadcast.status not in (EmailBroadcast.Status.SENDING,):
         return broadcast
 
+    if not _can_send_next_batch(broadcast):
+        return broadcast
+
+    wave_limit = limit if limit is not None else _batch_email_limit(broadcast)
     audience = _normalize_audience(broadcast.audience)
     pending = list(
         broadcast.recipients.filter(status=EmailBroadcastRecipient.Status.PENDING).order_by(
             "id"
-        )[:limit]
+        )[:wave_limit]
     )
     if not pending:
         return _finalize_if_complete(broadcast)
 
     errors: list[str] = []
+    sent_in_wave = 0
 
     for row in pending:
         broadcast.refresh_from_db(fields=["status"])
@@ -332,12 +376,15 @@ def process_broadcast_chunk(
                 broadcast=broadcast,
                 meta={"audience": audience},
             )
+        sent_in_wave += 1
 
     _refresh_broadcast_counts(broadcast)
     if errors:
         existing = (broadcast.error_summary or "").strip()
         merged = "\n".join([existing] + errors if existing else errors)
         broadcast.error_summary = merged[:8000]
+    if sent_in_wave > 0:
+        broadcast.last_batch_at = timezone.now()
     broadcast.save(
         update_fields=[
             "recipient_count",
@@ -346,6 +393,7 @@ def process_broadcast_chunk(
             "pending_count",
             "skipped_count",
             "error_summary",
+            "last_batch_at",
         ]
     )
     return _finalize_if_complete(broadcast)
@@ -399,11 +447,13 @@ def resume_broadcast(broadcast: EmailBroadcast) -> EmailBroadcast:
         return broadcast
     broadcast.status = EmailBroadcast.Status.SENDING
     broadcast.completed_at = None
+    broadcast.last_batch_at = None
     _refresh_broadcast_counts(broadcast)
     broadcast.save(
         update_fields=[
             "status",
             "completed_at",
+            "last_batch_at",
             "pending_count",
             "skipped_count",
         ]
@@ -428,7 +478,7 @@ def send_broadcast(
     if broadcast.status == EmailBroadcast.Status.FAILED:
         return broadcast
     while broadcast.status == EmailBroadcast.Status.SENDING:
-        process_broadcast_chunk(broadcast, limit=CHUNK_SIZE)
+        process_broadcast_chunk(broadcast)
         broadcast.refresh_from_db()
         if broadcast.pending_count == 0:
             break

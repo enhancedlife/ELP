@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from .default_layout import PLACEHOLDER_BODY, PLACEHOLDER_TITLE
@@ -7,6 +8,7 @@ from .layout_config import (
     validate_layout_config,
 )
 from .email_list import normalize_email_list
+from .broadcast_engine import next_batch_at
 from .models import (
     EmailBroadcast,
     EmailBroadcastRecipient,
@@ -36,6 +38,8 @@ class NewsletterSubscriberSerializer(serializers.ModelSerializer):
 
 class EmailBroadcastSerializer(serializers.ModelSerializer):
     progress_percent = serializers.SerializerMethodField()
+    next_batch_at = serializers.SerializerMethodField()
+    waiting_for_next_batch = serializers.SerializerMethodField()
 
     class Meta:
         model = EmailBroadcast
@@ -49,12 +53,16 @@ class EmailBroadcastSerializer(serializers.ModelSerializer):
             "audience",
             "audience_user_ids",
             "audience_emails",
+            "batch_email_count",
+            "batch_interval_minutes",
             "recipient_count",
             "sent_ok_count",
             "sent_fail_count",
             "pending_count",
             "skipped_count",
             "progress_percent",
+            "next_batch_at",
+            "waiting_for_next_batch",
             "error_summary",
             "created_at",
             "started_at",
@@ -70,6 +78,8 @@ class EmailBroadcastSerializer(serializers.ModelSerializer):
             "pending_count",
             "skipped_count",
             "progress_percent",
+            "next_batch_at",
+            "waiting_for_next_batch",
             "error_summary",
             "created_at",
             "started_at",
@@ -77,12 +87,36 @@ class EmailBroadcastSerializer(serializers.ModelSerializer):
             "sent_at",
         ]
 
+    def get_next_batch_at(self, obj: EmailBroadcast):
+        at = next_batch_at(obj)
+        return at.isoformat() if at else None
+
+    def get_waiting_for_next_batch(self, obj: EmailBroadcast) -> bool:
+        at = next_batch_at(obj)
+        if at is None:
+            return False
+        return timezone.now() < at
+
     def get_progress_percent(self, obj: EmailBroadcast) -> int:
         total = obj.recipient_count or 0
         if total <= 0:
             return 0
         done = (obj.sent_ok_count or 0) + (obj.sent_fail_count or 0) + (obj.skipped_count or 0)
         return min(100, int(round(100 * done / total)))
+
+    def validate_batch_email_count(self, value):
+        if value is None:
+            return value
+        if int(value) < 1:
+            raise serializers.ValidationError("batch_email_count must be at least 1.")
+        return int(value)
+
+    def validate_batch_interval_minutes(self, value):
+        if value is None:
+            return value
+        if int(value) < 0:
+            raise serializers.ValidationError("batch_interval_minutes cannot be negative.")
+        return int(value)
 
     def validate_audience(self, value):
         if value is None:

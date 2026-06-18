@@ -17,7 +17,6 @@ from .email_layout import compose_broadcast_html
 from .email_logging import record_outbound_email
 from .email_list import normalize_email_list
 from .broadcast_engine import (
-    CHUNK_SIZE,
     pause_broadcast,
     prepare_broadcast_recipients,
     process_broadcast_chunk,
@@ -427,7 +426,7 @@ def email_broadcast_send(request, pk):
         )
 
     if broadcast.status == EmailBroadcast.Status.SENDING:
-        process_broadcast_chunk(broadcast, limit=CHUNK_SIZE)
+        process_broadcast_chunk(broadcast)
 
     return _broadcast_response(broadcast)
 
@@ -442,7 +441,7 @@ def email_broadcast_process(request, pk):
             {"detail": "Only active sending batches can be processed."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    process_broadcast_chunk(broadcast, limit=CHUNK_SIZE)
+    process_broadcast_chunk(broadcast)
     return _broadcast_response(broadcast)
 
 
@@ -469,7 +468,7 @@ def email_broadcast_resume(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
     resume_broadcast(broadcast)
-    process_broadcast_chunk(broadcast, limit=CHUNK_SIZE)
+    process_broadcast_chunk(broadcast)
     return _broadcast_response(broadcast)
 
 

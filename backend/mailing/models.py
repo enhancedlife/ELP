@@ -91,6 +91,19 @@ class EmailBroadcast(models.Model):
     sent_fail_count = models.PositiveIntegerField(default=0)
     pending_count = models.PositiveIntegerField(default=0)
     skipped_count = models.PositiveIntegerField(default=0)
+    batch_email_count = models.PositiveIntegerField(
+        default=20,
+        help_text="How many emails to send per wave before waiting for the interval.",
+    )
+    batch_interval_minutes = models.PositiveIntegerField(
+        default=5,
+        help_text="Minutes to wait between waves (0 = send next wave as soon as processing runs).",
+    )
+    last_batch_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the most recent wave finished; used to schedule the next wave.",
+    )
     error_summary = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     started_at = models.DateTimeField(null=True, blank=True)

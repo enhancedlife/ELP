@@ -306,12 +306,16 @@ export type DashboardEmailBroadcast = {
 	audience: DashboardEmailBroadcastAudience;
 	audience_user_ids: number[];
 	audience_emails: string[];
+	batch_email_count: number;
+	batch_interval_minutes: number;
 	recipient_count: number;
 	sent_ok_count: number;
 	sent_fail_count: number;
 	pending_count: number;
 	skipped_count: number;
 	progress_percent: number;
+	next_batch_at: string | null;
+	waiting_for_next_batch: boolean;
 	error_summary: string;
 	/** Present when send succeeded but some recipients failed (SMTP errors per address). */
 	send_warning?: string;

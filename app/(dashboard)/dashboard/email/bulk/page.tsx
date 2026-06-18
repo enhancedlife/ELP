@@ -59,6 +59,8 @@ const RECIPIENT_TABS: RecipientTab[] = ["pending", "sent", "failed", "skipped"];
 
 const HTML_BODY_STARTER = "<p>Your message here.</p>";
 const TERMINAL_STATUSES = new Set(["sent", "failed", "stopped"]);
+const DEFAULT_BATCH_EMAIL_COUNT = 20;
+const DEFAULT_BATCH_INTERVAL_MINUTES = 5;
 
 function escapeHtml(s: string): string {
 	return s
@@ -92,6 +94,21 @@ function previewDocumentFromInner(headlineEscaped: string, inner: string): strin
 
 function sleep(ms: number) {
 	return new Promise((r) => setTimeout(r, ms));
+}
+
+function pollDelayMs(batch: DashboardEmailBroadcast): number {
+	if (!batch.waiting_for_next_batch || !batch.next_batch_at) return 600;
+	const ms = new Date(batch.next_batch_at).getTime() - Date.now();
+	if (ms <= 0) return 600;
+	return Math.min(ms + 250, 60_000);
+}
+
+function formatCountdown(seconds: number): string {
+	const s = Math.max(0, Math.ceil(seconds));
+	const m = Math.floor(s / 60);
+	const r = s % 60;
+	if (m <= 0) return `${r}s`;
+	return `${m}m ${String(r).padStart(2, "0")}s`;
 }
 
 function statusLabel(status: string): string {
@@ -152,12 +169,22 @@ function loadMessageIntoEditor(
 		setAudience: (v: Audience) => void;
 		setSelectedIds: (v: Set<number>) => void;
 		setManualEmailsText: (v: string) => void;
+		setBatchEmailCount?: (v: number) => void;
+		setBatchIntervalMinutes?: (v: number) => void;
 	},
 ) {
 	loadMessageContentOnly(broadcast, setters);
 	setters.setAudience((broadcast.audience as Audience) || "newsletter");
 	setters.setSelectedIds(new Set(broadcast.audience_user_ids || []));
 	setters.setManualEmailsText(formatEmailListForInput(broadcast.audience_emails));
+	if (setters.setBatchEmailCount) {
+		setters.setBatchEmailCount(broadcast.batch_email_count || DEFAULT_BATCH_EMAIL_COUNT);
+	}
+	if (setters.setBatchIntervalMinutes) {
+		setters.setBatchIntervalMinutes(
+			broadcast.batch_interval_minutes ?? DEFAULT_BATCH_INTERVAL_MINUTES,
+		);
+	}
 }
 
 export default function BulkMailPage() {
@@ -174,6 +201,10 @@ export default function BulkMailPage() {
 	const [userPickQuery, setUserPickQuery] = useState("");
 	const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
 	const [manualEmailsText, setManualEmailsText] = useState("");
+	const [batchEmailCount, setBatchEmailCount] = useState(DEFAULT_BATCH_EMAIL_COUNT);
+	const [batchIntervalMinutes, setBatchIntervalMinutes] = useState(
+		DEFAULT_BATCH_INTERVAL_MINUTES,
+	);
 	const [usersBanner, setUsersBanner] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [sending, setSending] = useState(false);
@@ -189,6 +220,7 @@ export default function BulkMailPage() {
 	const [deliveryStatus, setDeliveryStatus] = useState<DashboardEmailDeliveryStatus | null>(
 		null,
 	);
+	const [countdownTick, setCountdownTick] = useState(0);
 
 	const loadDrafts = useCallback(async () => {
 		const res = await getDashboardEmailBroadcasts();
@@ -252,6 +284,8 @@ export default function BulkMailPage() {
 					if (proc.ok && proc.data) {
 						setActiveBatch(proc.data);
 						if (proc.data.status !== "sending") break;
+						await sleep(pollDelayMs(proc.data));
+						continue;
 					}
 					await sleep(600);
 				}
@@ -276,6 +310,23 @@ export default function BulkMailPage() {
 		},
 		[loadDrafts, loadRecipients, recipientTab, refreshBatch],
 	);
+
+	useEffect(() => {
+		if (!activeBatch?.waiting_for_next_batch || !activeBatch.next_batch_at) return;
+		const id = window.setInterval(() => setCountdownTick((t) => t + 1), 1000);
+		return () => window.clearInterval(id);
+	}, [activeBatch?.waiting_for_next_batch, activeBatch?.next_batch_at]);
+
+	const nextBatchCountdown = useMemo(() => {
+		void countdownTick;
+		if (!activeBatch?.waiting_for_next_batch || !activeBatch.next_batch_at) return null;
+		const seconds = (new Date(activeBatch.next_batch_at).getTime() - Date.now()) / 1000;
+		return formatCountdown(seconds);
+	}, [
+		activeBatch?.waiting_for_next_batch,
+		activeBatch?.next_batch_at,
+		countdownTick,
+	]);
 
 	useEffect(() => {
 		void loadUsers();
@@ -434,6 +485,14 @@ export default function BulkMailPage() {
 			});
 			return false;
 		}
+		if (!Number.isFinite(batchEmailCount) || batchEmailCount < 1) {
+			toast.error("Emails per wave must be at least 1.");
+			return false;
+		}
+		if (!Number.isFinite(batchIntervalMinutes) || batchIntervalMinutes < 0) {
+			toast.error("Interval between waves cannot be negative.");
+			return false;
+		}
 		return true;
 	}
 
@@ -456,6 +515,8 @@ export default function BulkMailPage() {
 			audience_user_ids:
 				audience === "selected_site_users" ? Array.from(selectedIds) : [],
 			audience_emails: emails,
+			batch_email_count: batchEmailCount,
+			batch_interval_minutes: batchIntervalMinutes,
 		};
 	}
 
@@ -491,6 +552,8 @@ export default function BulkMailPage() {
 		setAudience("newsletter");
 		setSelectedIds(new Set());
 		setManualEmailsText("");
+		setBatchEmailCount(DEFAULT_BATCH_EMAIL_COUNT);
+		setBatchIntervalMinutes(DEFAULT_BATCH_INTERVAL_MINUTES);
 		setRecipients([]);
 		setRecipientsTotal(0);
 	}
@@ -545,6 +608,8 @@ export default function BulkMailPage() {
 			setAudience,
 			setSelectedIds,
 			setManualEmailsText,
+			setBatchEmailCount,
+			setBatchIntervalMinutes,
 		});
 		if (b.status !== "draft") {
 			void loadRecipients(b.id, recipientTab);
@@ -569,7 +634,7 @@ export default function BulkMailPage() {
 
 		if (
 			!window.confirm(
-				`Send this message to ${recipientLabel}? You can pause or stop while sending.`,
+				`Send this message to ${recipientLabel}? The system will send ${batchEmailCount} email(s) every ${batchIntervalMinutes} minute(s) until done. You can pause or stop while sending.`,
 			)
 		) {
 			return;
@@ -804,6 +869,23 @@ export default function BulkMailPage() {
 								/>
 							</div>
 						</div>
+						<p className="text-sm text-muted-foreground">
+							Schedule: {activeBatch.batch_email_count ?? DEFAULT_BATCH_EMAIL_COUNT} email
+							{(activeBatch.batch_email_count ?? DEFAULT_BATCH_EMAIL_COUNT) === 1 ? "" : "s"} per wave
+							{(activeBatch.batch_interval_minutes ?? DEFAULT_BATCH_INTERVAL_MINUTES) > 0
+								? `, ${activeBatch.batch_interval_minutes ?? DEFAULT_BATCH_INTERVAL_MINUTES} minute${
+										(activeBatch.batch_interval_minutes ?? DEFAULT_BATCH_INTERVAL_MINUTES) === 1
+											? ""
+											: "s"
+									} between waves`
+								: " (no wait between waves)"}
+							{activeBatch.status === "sending" && nextBatchCountdown ? (
+								<span className="text-foreground">
+									{" "}
+									· Next wave in {nextBatchCountdown}
+								</span>
+							) : null}
+						</p>
 						<div className="flex flex-wrap gap-2">
 							{activeBatch.status === "sending" ? (
 								<Button type="button" variant="outline" size="sm" onClick={() => void pauseBatch()}>
@@ -917,6 +999,41 @@ export default function BulkMailPage() {
 							<option value="selected_site_users">Selected users (+ optional manual emails)</option>
 							<option value="manual_emails">Manual email list only</option>
 						</select>
+					</div>
+
+					<div className="grid gap-4 sm:grid-cols-2 max-w-lg">
+						<div className="grid gap-2">
+							<Label htmlFor="bulk-batch-size">Emails per wave</Label>
+							<Input
+								id="bulk-batch-size"
+								type="number"
+								min={1}
+								step={1}
+								disabled={formLocked}
+								value={batchEmailCount}
+								onChange={(e) => setBatchEmailCount(Math.max(1, Number(e.target.value) || 1))}
+							/>
+							<p className="text-xs text-muted-foreground">
+								How many messages to send before waiting for the interval.
+							</p>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="bulk-batch-interval">Interval (minutes)</Label>
+							<Input
+								id="bulk-batch-interval"
+								type="number"
+								min={0}
+								step={1}
+								disabled={formLocked}
+								value={batchIntervalMinutes}
+								onChange={(e) =>
+									setBatchIntervalMinutes(Math.max(0, Number(e.target.value) || 0))
+								}
+							/>
+							<p className="text-xs text-muted-foreground">
+								Wait time between waves. Use 0 to send waves back-to-back.
+							</p>
+						</div>
 					</div>
 
 					{audience === "manual_emails" ? (
