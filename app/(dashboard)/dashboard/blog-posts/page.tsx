@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { ExternalLink, ImagePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react"
+import { ExternalLink, FileUp, ImagePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +50,7 @@ import type { BlogPostRecord } from "@/lib/types"
 import type { BlogBodyBlock } from "@/lib/blog-body-blocks"
 import { defaultBlogBodyBlocks, serializeBlogBody } from "@/lib/blog-body-blocks"
 import { BlogBodyEditor, bodyToEditorBlocks } from "@/components/dashboard/blog-body-editor"
+import { applyParsedBlogTsx, parseBlogTsx } from "@/lib/parse-blog-tsx"
 
 function slugify(text: string): string {
   return text
@@ -120,6 +121,7 @@ export default function DashboardBlogPostsPage() {
   const [hadUploadedThumbnail, setHadUploadedThumbnail] = useState(false)
   const [pendingComments, setPendingComments] = useState(0)
   const thumbnailInputRef = useRef<HTMLInputElement>(null)
+  const tsxImportInputRef = useRef<HTMLInputElement>(null)
 
   function resetImageUploadState() {
     setImageMode("url")
@@ -169,7 +171,34 @@ export default function DashboardBlogPostsPage() {
     setForm({ ...emptyForm, published_at: toDatetimeLocalValue(new Date().toISOString()) })
     setBodyBlocks(defaultBlogBodyBlocks())
     resetImageUploadState()
+    if (tsxImportInputRef.current) tsxImportInputRef.current.value = ""
     setDialogOpen(true)
+  }
+
+  async function handleTsxImport(file: File) {
+    try {
+      const text = await file.text()
+      const parsed = parseBlogTsx(text, file.name)
+      const applied = applyParsedBlogTsx(parsed)
+      setForm((f) => ({
+        ...f,
+        ...applied.form,
+        slug: editingId ? f.slug : applied.form.slug,
+      }))
+      setBodyBlocks(applied.bodyBlocks)
+      toast.success("TSX imported", {
+        description: `${applied.bodyBlocks.length} content block(s) loaded from ${file.name}.`,
+      })
+      if (parsed.warnings.length) {
+        toast.warning("Import notes", { description: parsed.warnings.join(" ") })
+      }
+    } catch (err) {
+      toast.error("Could not import TSX", {
+        description: err instanceof Error ? err.message : "Invalid or unsupported file format.",
+      })
+    } finally {
+      if (tsxImportInputRef.current) tsxImportInputRef.current.value = ""
+    }
   }
 
   function openEdit(p: BlogPostRecord) {
@@ -458,11 +487,45 @@ export default function DashboardBlogPostsPage() {
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit blog post" : "New blog post"}</DialogTitle>
             <DialogDescription>
-              Build the article with blocks that match the public blog layout — justified paragraphs, colored H3
-              headings, single/two-column boxes, labeled lists (Title: text), and disclaimer.
+              Build the article with blocks that match the public blog layout — or import an existing{" "}
+              <code className="rounded bg-muted px-1 text-xs">app/blog/.../page.tsx</code> file to auto-fill
+              title, excerpt, category, read time, date, slug, and body blocks.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            <div className="rounded-lg border border-dashed bg-muted/30 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Import from TSX</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload a blog article file that uses{" "}
+                    <code className="rounded bg-muted px-1">BlogContentGate</code> (same format as legacy{" "}
+                    <code className="rounded bg-muted px-1">app/blog/*/page.tsx</code> pages).
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <input
+                    ref={tsxImportInputRef}
+                    type="file"
+                    accept=".tsx,.ts,.jsx,.js,text/plain"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) void handleTsxImport(file)
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => tsxImportInputRef.current?.click()}
+                  >
+                    <FileUp className="mr-2 h-4 w-4" />
+                    Choose TSX file
+                  </Button>
+                </div>
+              </div>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input
