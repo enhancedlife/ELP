@@ -44,15 +44,30 @@ class BlogPostPublicSerializer(serializers.ModelSerializer):
 
 class BlogPostDetailSerializer(BlogPostPublicSerializer):
     is_public = serializers.BooleanField(read_only=True)
+    is_published = serializers.BooleanField(read_only=True)
     published_at = serializers.DateTimeField()
 
     class Meta(BlogPostPublicSerializer.Meta):
-        fields = BlogPostPublicSerializer.Meta.fields + ["body", "published_at", "is_public"]
+        fields = BlogPostPublicSerializer.Meta.fields + [
+            "body",
+            "published_at",
+            "is_public",
+            "is_published",
+        ]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get("request")
         user = getattr(request, "user", None)
+        is_superuser = (
+            user
+            and getattr(user, "is_authenticated", False)
+            and getattr(user, "is_active", False)
+            and getattr(user, "is_superuser", False)
+        )
+        if is_superuser:
+            return data
+
         if not instance.is_public:
             if not user or not getattr(user, "is_authenticated", False) or not user.is_active:
                 data["body"] = ""

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { ExternalLink, FileUp, ImagePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react"
+import { ExternalLink, Eye, FileUp, ImagePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -51,6 +51,8 @@ import type { BlogBodyBlock } from "@/lib/blog-body-blocks"
 import { defaultBlogBodyBlocks, serializeBlogBody } from "@/lib/blog-body-blocks"
 import { BlogBodyEditor, bodyToEditorBlocks } from "@/components/dashboard/blog-body-editor"
 import { applyParsedBlogTsx, parseBlogTsx } from "@/lib/parse-blog-tsx"
+import { useDashboardAuth } from "@/components/providers/dashboard-auth-provider"
+import { isDashboardFullAdmin } from "@/lib/auth"
 
 function slugify(text: string): string {
   return text
@@ -106,6 +108,8 @@ function postListingLabel(p: BlogPostRecord): string {
 }
 
 export default function DashboardBlogPostsPage() {
+  const { user } = useDashboardAuth()
+  const isAdmin = isDashboardFullAdmin(user)
   const [posts, setPosts] = useState<BlogPostRecord[]>([])
   const [banner, setBanner] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -445,9 +449,20 @@ export default function DashboardBlogPostsPage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         {p.is_published ? (
-                          <Button variant="ghost" size="icon" asChild>
+                          <Button variant="ghost" size="icon" asChild title="View on site">
                             <Link href={`/blog/${p.slug}`} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        ) : null}
+                        {!p.is_published && isAdmin ? (
+                          <Button variant="ghost" size="icon" asChild title="Preview draft">
+                            <Link
+                              href={`/blog/${p.slug}?preview=1`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
                         ) : null}

@@ -63,6 +63,8 @@ export type BlogPostDetail = BlogPostSummary & {
   published_at?: string;
   /** When true, full post and comments are open without login. */
   is_public?: boolean;
+  /** False when the post is a draft (superuser preview only). */
+  is_published?: boolean;
 };
 
 export type BlogCommentPublic = {

@@ -1,6 +1,6 @@
 import math
 
-from django.shortcuts import get_object_or_404
+from django.http import Http404
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
@@ -116,16 +116,22 @@ def blog_posts_list(request):
 @authentication_classes([TokenAuthentication])
 @permission_classes([AllowAny])
 def blog_post_by_slug(request, slug: str):
-    post = get_object_or_404(
-        BlogPost,
-        slug=slug,
-        is_published=True,
-        deleted_at__isnull=True,
-    )
+    try:
+        post = BlogPost.objects.get(slug=slug, deleted_at__isnull=True)
+    except BlogPost.DoesNotExist:
+        raise Http404
+
     user = getattr(request, "user", None)
-    if not post.is_public:
-        if not user or not user.is_authenticated or not user.is_active:
-            pass  # serializer strips body
+    is_superuser = (
+        user
+        and getattr(user, "is_authenticated", False)
+        and getattr(user, "is_active", False)
+        and getattr(user, "is_superuser", False)
+    )
+
+    if not post.is_published and not is_superuser:
+        raise Http404
+
     return Response(
         BlogPostDetailSerializer(post, context={"request": request}).data
     )

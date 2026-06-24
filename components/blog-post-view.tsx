@@ -7,7 +7,13 @@ import { getBlogPostWithAuth } from "@/lib/api/blog-client"
 import { AUTH_SESSION_CHANGE_EVENT, fetchAuthUser } from "@/lib/auth"
 import type { BlogPostDetail } from "@/lib/types"
 
-export function BlogPostView({ post: initialPost }: { post: BlogPostDetail }) {
+export function BlogPostView({
+  post: initialPost,
+  draftPreview = false,
+}: {
+  post: BlogPostDetail
+  draftPreview?: boolean
+}) {
   const [post, setPost] = useState(initialPost)
 
   useEffect(() => {
@@ -15,7 +21,7 @@ export function BlogPostView({ post: initialPost }: { post: BlogPostDetail }) {
   }, [initialPost])
 
   useEffect(() => {
-    if (initialPost.is_public) return
+    if (initialPost.is_public || draftPreview) return
 
     let cancelled = false
 
@@ -35,9 +41,9 @@ export function BlogPostView({ post: initialPost }: { post: BlogPostDetail }) {
       cancelled = true
       window.removeEventListener(AUTH_SESSION_CHANGE_EVENT, onAuthChange)
     }
-  }, [initialPost.slug, initialPost.is_public])
+  }, [initialPost.slug, initialPost.is_public, draftPreview])
 
-  const isPublic = post.is_public === true
+  const isPublic = draftPreview || post.is_public === true
 
   return (
     <BlogContentGate
