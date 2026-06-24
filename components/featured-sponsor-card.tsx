@@ -2,7 +2,7 @@
 
 import { BlogArticleBody } from "@/components/blog-article-body";
 import type { Sponsor } from "@/lib/types";
-import { resolveBlogBodyHtml } from "@/lib/blog-body-blocks";
+import { resolveBlogBodyHtml, sponsorIntroText } from "@/lib/blog-body-blocks";
 
 type FeaturedSponsorCardProps = {
   sponsor: Sponsor;
@@ -12,6 +12,7 @@ type FeaturedSponsorCardProps = {
 export function FeaturedSponsorCard({ sponsor, compact = false }: FeaturedSponsorCardProps) {
   const body = sponsor.body?.trim() || sponsor.description?.trim() || "";
   const ctaLabel = sponsor.cta_label?.trim() || `Visit ${sponsor.name}`;
+  const intro = sponsorIntroText(sponsor.body, sponsor.description);
 
   if (compact) {
     return (
@@ -19,10 +20,8 @@ export function FeaturedSponsorCard({ sponsor, compact = false }: FeaturedSponso
         <h3 className="text-3xl font-heading font-bold text-green-400 uppercase tracking-wide">
           {sponsor.name}
         </h3>
-        {body ? (
-          <div className="mt-4 w-full [&_.blog-article-body>p]:max-w-3xl [&_.blog-article-body>p]:text-gray-300 [&_.blog-article-body>div]:w-full">
-            <BlogArticleBody body={body} tone="sponsor-featured" />
-          </div>
+        {intro ? (
+          <p className="mt-4 text-gray-300 leading-relaxed">{intro}</p>
         ) : null}
         {sponsor.website_url ? (
           <a

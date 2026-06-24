@@ -13,6 +13,30 @@ export function backendUrl(path: string): string {
 	return `${backendOrigin()}${p}`;
 }
 
+/** Django origin for SSR/RSC (matches `/api/*` route handlers). */
+export function serverBackendOrigin(): string {
+	const raw =
+		process.env.BACKEND_URL ||
+		process.env.API_REWRITE_TARGET ||
+		process.env.NEXT_PUBLIC_BACKEND_URL ||
+		"http://127.0.0.1:8000";
+	return raw
+		.replace(/\/$/, "")
+		.replace(
+			/(^https?:\/\/)localhost\b/i,
+			(_, scheme: string) => `${scheme}127.0.0.1`,
+		);
+}
+
+/** Browser: same-origin BFF. Server: Django directly (rewrites do not apply to RSC fetch). */
+export function resolveApiUrl(path: string): string {
+	const normalized = path.startsWith("/") ? path : `/${path}`;
+	if (typeof window === "undefined") {
+		return `${serverBackendOrigin()}${normalized}`;
+	}
+	return normalized;
+}
+
 /**
  * When NEXT_PUBLIC_DASHBOARD_CLIENT_DIRECT=1, dashboard fetches go straight from the
  * browser to Django (needs CORS). Use if the Next.js server cannot reach the API but

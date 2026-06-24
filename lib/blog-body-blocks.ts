@@ -326,6 +326,30 @@ export function resolveBlogBodyHtml(raw: string | null | undefined): string {
   return trimmed
 }
 
+/** Short teaser for homepage / cards — first paragraph only, not full block layout. */
+export function sponsorIntroText(
+  body: string | null | undefined,
+  description?: string | null,
+): string {
+  const desc = description?.trim()
+  if (desc) {
+    return desc.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+  }
+  const blocks = parseBlogBody(body ?? "")
+  if (blocks) {
+    const intro = blocks.find((b) => b.type === "paragraph")
+    if (intro?.type === "paragraph" && intro.text.trim()) {
+      return intro.text.trim()
+    }
+  }
+  const plain = resolveBlogBodyHtml(body)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  if (!plain) return ""
+  return plain.length > 280 ? `${plain.slice(0, 277)}…` : plain
+}
+
 export const BLOG_BLOCK_LABELS: Record<BlogBodyBlock["type"], string> = {
   paragraph: "Paragraph",
   heading2: "Section heading (H2)",

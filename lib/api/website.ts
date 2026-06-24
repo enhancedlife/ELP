@@ -5,6 +5,7 @@ import type {
   SiteBranding,
   Sponsor,
 } from '@/lib/types';
+import { resolveApiUrl } from '@/lib/backend-public';
 import { fetchSiteBranding } from '@/lib/site-branding';
 
 async function safeFetchJson<T>(input: string, init?: RequestInit): Promise<T | null> {
@@ -117,14 +118,14 @@ function parseSponsorsPayload(data: unknown): {
   return { sponsors: [], page: null };
 }
 
-/** Same-origin `/api/sponsors` only (Next → Django proxy); avoids browser CORS to Django. */
+/** Sponsors list + partners page settings. SSR uses Django directly; browser uses `/api/sponsors` proxy. */
 export async function getSponsorsWithStatus(): Promise<{
   sponsors: Sponsor[];
   page: PartnersPageSettings | null;
   ok: boolean;
 }> {
   try {
-    const res = await fetch('/api/sponsors', {
+    const res = await fetch(resolveApiUrl('/api/sponsors'), {
       method: 'GET',
       headers: { Accept: 'application/json' },
       cache: 'no-store',
