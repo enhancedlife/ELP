@@ -64,6 +64,30 @@ export type BlogBodyBlock =
         { title: string; titleColor?: BlogAccentColor; body: string },
       ]
     }
+  | {
+      id: string
+      type: "three_column"
+      columns: [
+        { title: string; titleColor?: BlogAccentColor; body: string },
+        { title: string; titleColor?: BlogAccentColor; body: string },
+        { title: string; titleColor?: BlogAccentColor; body: string },
+      ]
+    }
+  | {
+      id: string
+      type: "promo_code"
+      label: string
+      code: string
+      description: string
+      codeColor?: BlogAccentColor
+    }
+  | {
+      id: string
+      type: "cta_link"
+      label: string
+      href: string
+      variant?: "primary" | "outline"
+    }
   | { id: string; type: "disclaimer"; title: string; text: string }
   | { id: string; type: "raw_html"; html: string }
 
@@ -107,6 +131,33 @@ export function createEmptyBlock(type: BlogBodyBlock["type"]): BlogBodyBlock {
           { title: "", titleColor: "green", body: "" },
           { title: "", titleColor: "green", body: "" },
         ],
+      }
+    case "three_column":
+      return {
+        id,
+        type,
+        columns: [
+          { title: "", titleColor: "green", body: "" },
+          { title: "", titleColor: "green", body: "" },
+          { title: "", titleColor: "green", body: "" },
+        ],
+      }
+    case "promo_code":
+      return {
+        id,
+        type,
+        label: "Exclusive Community Code",
+        code: "",
+        description: "",
+        codeColor: "orange",
+      }
+    case "cta_link":
+      return {
+        id,
+        type,
+        label: "Contact Us",
+        href: "/contact",
+        variant: "outline",
       }
     case "disclaimer":
       return { id, type, title: "Disclaimer", text: "" }
@@ -155,10 +206,10 @@ export function blogBlockToHtml(block: BlogBodyBlock): string {
       return `<p class="text-gray-300 leading-relaxed text-justify">${escapeHtml(block.text).replace(/\n/g, "<br />")}</p>`
     case "heading2":
       if (!block.text.trim()) return ""
-      return `<h2 class="text-2xl font-bold mt-10 mb-4">${escapeHtml(block.text)}</h2>`
+      return `<h2 class="block-h2 text-2xl font-bold mt-10 mb-4">${escapeHtml(block.text)}</h2>`
     case "heading3":
       if (!block.text.trim()) return ""
-      return `<h3 class="${blogAccentHeading3Class(block.color)}">${escapeHtml(block.text)}</h3>`
+      return `<h3 class="block-h3 ${blogAccentHeading3Class(block.color)}">${escapeHtml(block.text)}</h3>`
     case "bullet_list": {
       const items = block.items.filter((i) => i.trim())
       if (items.length === 0) return ""
@@ -195,8 +246,46 @@ export function blogBlockToHtml(block: BlogBodyBlock): string {
       const [a, b] = block.columns
       if (!a.title.trim() && !a.body.trim() && !b.title.trim() && !b.body.trim()) return ""
       const col = (c: { title: string; titleColor?: BlogAccentColor; body: string }) =>
-        `<div class="bg-black/30 backdrop-blur-sm rounded-xl p-5"><h3 class="font-semibold ${blogAccentTextClass(c.titleColor)}">${escapeHtml(c.title)}</h3><p class="text-gray-400 mt-2 text-sm text-justify">${escapeHtml(c.body).replace(/\n/g, "<br />")}</p></div>`
-      return `<div class="grid md:grid-cols-2 gap-4 my-6">${col(a)}${col(b)}</div>`
+        `<div class="bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10"><h3 class="sponsor-col-title text-xl font-semibold ${blogAccentTextClass(c.titleColor)}">${escapeHtml(c.title)}</h3><p class="text-gray-400 mt-3 text-sm text-justify leading-relaxed">${escapeHtml(c.body).replace(/\n/g, "<br />")}</p></div>`
+      return `<div class="sponsor-two-col grid md:grid-cols-2 gap-6 my-6">${col(a)}${col(b)}</div>`
+    }
+    case "three_column": {
+      const [a, b, c] = block.columns
+      if (
+        !a.title.trim() &&
+        !a.body.trim() &&
+        !b.title.trim() &&
+        !b.body.trim() &&
+        !c.title.trim() &&
+        !c.body.trim()
+      ) {
+        return ""
+      }
+      const col = (col: { title: string; titleColor?: BlogAccentColor; body: string }) =>
+        `<div class="bg-black/50 rounded-xl p-5 h-full"><h3 class="sponsor-col-title text-base font-semibold ${blogAccentTextClass(col.titleColor)}">${escapeHtml(col.title)}</h3><p class="text-gray-400 mt-2 text-sm text-justify leading-relaxed">${escapeHtml(col.body).replace(/\n/g, "<br />")}</p></div>`
+      return `<div class="sponsor-three-col grid md:grid-cols-3 gap-6 my-8 w-full">${col(a)}${col(b)}${col(c)}</div>`
+    }
+    case "promo_code": {
+      if (!block.code.trim() && !block.label.trim() && !block.description.trim()) return ""
+      const codeClass = blogAccentTextClass(block.codeColor ?? "orange")
+      const label = block.label?.trim()
+        ? `<p class="text-sm uppercase text-gray-500">${escapeHtml(block.label)}</p>`
+        : ""
+      const code = block.code?.trim()
+        ? `<p class="text-3xl font-bold ${codeClass} mt-1">${escapeHtml(block.code)}</p>`
+        : ""
+      const desc = block.description?.trim()
+        ? `<p class="text-gray-400 mt-2">${escapeHtml(block.description).replace(/\n/g, "<br />")}</p>`
+        : ""
+      return `<div class="mt-8 p-6 bg-black/50 rounded-xl border border-orange-500/30">${label}${code}${desc}</div>`
+    }
+    case "cta_link": {
+      if (!block.label.trim() || !block.href.trim()) return ""
+      const cls =
+        block.variant === "primary"
+          ? "inline-block mt-8 bg-green-600 hover:bg-green-500 transition px-8 py-4 rounded-xl font-semibold text-white"
+          : "inline-block mt-8 border border-white/20 hover:border-green-500 px-8 py-4 rounded-xl transition font-semibold text-white"
+      return `<div class="text-center my-8"><a href="${escapeHtml(block.href)}" class="${cls}">${escapeHtml(block.label)}</a></div>`
     }
     case "disclaimer":
       if (!block.title.trim() && !block.text.trim()) return ""
@@ -245,6 +334,9 @@ export const BLOG_BLOCK_LABELS: Record<BlogBodyBlock["type"], string> = {
   labeled_list: "Labeled list (title: text)",
   box: "Single column box",
   two_column: "Two column boxes",
+  three_column: "Three column boxes",
+  promo_code: "Promo / discount code",
+  cta_link: "Call-to-action button",
   disclaimer: "Disclaimer box",
   raw_html: "Raw HTML (legacy)",
 }

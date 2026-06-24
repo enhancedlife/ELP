@@ -125,6 +125,7 @@ export type PartnersPageSettings = {
   intro_heading: string;
   intro_body: string;
   pillars: PartnersPagePillar[];
+  page_body?: string;
   link_primary_label: string;
   link_primary_url: string;
   link_secondary_label: string;
@@ -138,6 +139,10 @@ export type Sponsor = {
   website_url?: string | null;
   logo_url?: string | null;
   description?: string | null;
+  /** Block JSON (blog-blocks-v1) for rich layout. */
+  body?: string | null;
+  is_featured?: boolean;
+  cta_label?: string | null;
   /** Section heading on the public sponsors page (e.g. “Supplements & health”). */
   category?: string | null;
   is_active: boolean;

@@ -275,6 +275,98 @@ function BlockFields({
           ))}
         </div>
       )
+    case "three_column":
+      return (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {block.columns.map((col, i) => (
+            <div key={i} className="space-y-2 rounded-lg border p-3">
+              <Label className="text-xs text-muted-foreground">Column {i + 1}</Label>
+              <Input
+                value={col.title}
+                onChange={(e) => {
+                  const columns = [...block.columns] as typeof block.columns
+                  columns[i] = { ...columns[i], title: e.target.value }
+                  onChange({ ...block, columns })
+                }}
+                placeholder="Box title (H3)"
+              />
+              <AccentColorSelect
+                label="Title color"
+                value={col.titleColor}
+                onChange={(titleColor) => {
+                  const columns = [...block.columns] as typeof block.columns
+                  columns[i] = { ...columns[i], titleColor }
+                  onChange({ ...block, columns })
+                }}
+              />
+              <Textarea
+                rows={3}
+                value={col.body}
+                onChange={(e) => {
+                  const columns = [...block.columns] as typeof block.columns
+                  columns[i] = { ...columns[i], body: e.target.value }
+                  onChange({ ...block, columns })
+                }}
+                placeholder="Box body text"
+              />
+            </div>
+          ))}
+        </div>
+      )
+    case "promo_code":
+      return (
+        <div className="space-y-3">
+          <Input
+            value={block.label}
+            onChange={(e) => onChange({ ...block, label: e.target.value })}
+            placeholder="Label above code (e.g. Exclusive Community Code)"
+          />
+          <Input
+            value={block.code}
+            onChange={(e) => onChange({ ...block, code: e.target.value })}
+            placeholder="Promo code"
+            className="font-mono"
+          />
+          <AccentColorSelect
+            label="Code color"
+            value={block.codeColor}
+            onChange={(codeColor) => onChange({ ...block, codeColor })}
+          />
+          <Textarea
+            rows={2}
+            value={block.description}
+            onChange={(e) => onChange({ ...block, description: e.target.value })}
+            placeholder="Short description under the code"
+          />
+        </div>
+      )
+    case "cta_link":
+      return (
+        <div className="space-y-3">
+          <Input
+            value={block.label}
+            onChange={(e) => onChange({ ...block, label: e.target.value })}
+            placeholder="Button label"
+          />
+          <Input
+            value={block.href}
+            onChange={(e) => onChange({ ...block, href: e.target.value })}
+            placeholder="/contact or https://…"
+          />
+          <Select
+            value={block.variant ?? "outline"}
+            onValueChange={(v) => onChange({ ...block, variant: v as "primary" | "outline" })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="primary">Green solid button</SelectItem>
+              <SelectItem value="outline">Outline button</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )
     case "disclaimer":
       return (
         <div className="space-y-2">

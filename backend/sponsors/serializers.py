@@ -19,6 +19,7 @@ class PartnersPageSettingsSerializer(serializers.ModelSerializer):
             "link_primary_url",
             "link_secondary_label",
             "link_secondary_url",
+            "page_body",
             "updated_at",
         ]
         read_only_fields = ["id", "updated_at"]
@@ -33,6 +34,9 @@ class SponsorSerializer(serializers.ModelSerializer):
             "website_url",
             "logo_url",
             "description",
+            "body",
+            "is_featured",
+            "cta_label",
             "category",
             "is_active",
             "sort_order",

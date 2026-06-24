@@ -33,6 +33,10 @@ class PartnersPageSettings(models.Model):
     link_primary_url = models.URLField(max_length=1024, blank=True)
     link_secondary_label = models.CharField(max_length=120, blank=True)
     link_secondary_url = models.URLField(max_length=1024, blank=True)
+    page_body = models.TextField(
+        blank=True,
+        help_text="Block JSON for page sections below sponsors (standards, disclosure, etc.).",
+    )
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -49,6 +53,19 @@ class Sponsor(models.Model):
     website_url = models.URLField(max_length=1024, blank=True)
     logo_url = models.URLField(max_length=1024, blank=True)
     description = models.TextField(blank=True)
+    body = models.TextField(
+        blank=True,
+        help_text="Block JSON (blog-blocks-v1) for rich sponsor layout on the public page.",
+    )
+    is_featured = models.BooleanField(
+        default=False,
+        help_text="Featured sponsors render in the large hero card on /sponsors and the homepage.",
+    )
+    cta_label = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text='Button label, e.g. "Visit Great Life Pharma". Defaults to "Visit sponsor".',
+    )
     category = models.CharField(
         max_length=255,
         blank=True,

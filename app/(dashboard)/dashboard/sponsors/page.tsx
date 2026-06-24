@@ -35,6 +35,15 @@ import {
 	patchDashboardPartnersPage,
 } from "@/lib/api/dashboard";
 import type { PartnersPageSettings, Sponsor } from "@/lib/types";
+import {
+	BlogBodyEditor,
+	bodyToEditorBlocks,
+} from "@/components/dashboard/blog-body-editor";
+import {
+	defaultBlogBodyBlocks,
+	serializeBlogBody,
+	type BlogBodyBlock,
+} from "@/lib/blog-body-blocks";
 
 const emptyForm = {
 	name: "",
@@ -42,6 +51,8 @@ const emptyForm = {
 	website_url: "",
 	logo_url: "",
 	description: "",
+	is_featured: false,
+	cta_label: "",
 	is_active: true,
 	sort_order: 0,
 };
@@ -70,6 +81,8 @@ export default function DashboardSponsorsPage() {
 	const [saving, setSaving] = useState(false);
 	const [editingId, setEditingId] = useState<number | null>(null);
 	const [form, setForm] = useState(emptyForm);
+	const [bodyBlocks, setBodyBlocks] = useState<BlogBodyBlock[]>(defaultBlogBodyBlocks());
+	const [pageBodyBlocks, setPageBodyBlocks] = useState<BlogBodyBlock[]>(defaultBlogBodyBlocks());
 	const [showArchived, setShowArchived] = useState(false);
 	const [partnersForm, setPartnersForm] = useState(() => partnersPageToForm({
 		id: 1,
@@ -103,6 +116,7 @@ export default function DashboardSponsorsPage() {
 		}
 		if (pgRes.ok && pgRes.data) {
 			setPartnersForm(partnersPageToForm(pgRes.data));
+			setPageBodyBlocks(bodyToEditorBlocks(pgRes.data.page_body ?? ""));
 		}
 		setLoading(false);
 	}, [showArchived]);
@@ -114,17 +128,21 @@ export default function DashboardSponsorsPage() {
 	function openCreate() {
 		setEditingId(null);
 		setForm(emptyForm);
+		setBodyBlocks(defaultBlogBodyBlocks());
 		setDialogOpen(true);
 	}
 
 	function openEdit(s: Sponsor) {
 		setEditingId(s.id);
+		setBodyBlocks(bodyToEditorBlocks(s.body ?? s.description ?? ""));
 		setForm({
 			name: s.name,
 			category: s.category ?? "",
 			website_url: s.website_url ?? "",
 			logo_url: s.logo_url ?? "",
 			description: s.description ?? "",
+			is_featured: s.is_featured ?? false,
+			cta_label: s.cta_label ?? "",
 			is_active: s.is_active,
 			sort_order: s.sort_order,
 		});
@@ -144,6 +162,9 @@ export default function DashboardSponsorsPage() {
 			website_url: form.website_url.trim() || "",
 			logo_url: form.logo_url.trim() || "",
 			description: form.description.trim() || "",
+			body: serializeBlogBody(bodyBlocks),
+			is_featured: form.is_featured,
+			cta_label: form.cta_label.trim() || "",
 			is_active: form.is_active,
 			sort_order: Number(form.sort_order) || 0,
 		};
@@ -233,6 +254,7 @@ export default function DashboardSponsorsPage() {
 			intro_heading: partnersForm.intro_heading.trim() || "",
 			intro_body: partnersForm.intro_body.trim() || "",
 			pillars,
+			page_body: serializeBlogBody(pageBodyBlocks),
 			link_primary_label: partnersForm.link_primary_label.trim() || "",
 			link_primary_url: partnersForm.link_primary_url.trim() || "",
 			link_secondary_label: partnersForm.link_secondary_label.trim() || "",
@@ -246,7 +268,10 @@ export default function DashboardSponsorsPage() {
 			return;
 		}
 		toast.success("Sponsors page updated");
-		if (res.data) setPartnersForm(partnersPageToForm(res.data));
+		if (res.data) {
+			setPartnersForm(partnersPageToForm(res.data));
+			setPageBodyBlocks(bodyToEditorBlocks(res.data.page_body ?? ""));
+		}
 	}
 
 	return (
@@ -370,7 +395,15 @@ export default function DashboardSponsorsPage() {
 							/>
 						</div>
 						<div className="grid gap-2 sm:col-span-2">
-							<Label htmlFor="pp-pillars">Pillars (JSON array)</Label>
+							<Label>Page sections (standards, become a sponsor, disclosure)</Label>
+							<p className="text-xs text-muted-foreground">
+								Block editor — same types as blog posts, including two/three column boxes, promo
+								codes, and CTA buttons.
+							</p>
+							<BlogBodyEditor blocks={pageBodyBlocks} onChange={setPageBodyBlocks} />
+						</div>
+						<div className="grid gap-2 sm:col-span-2">
+							<Label htmlFor="pp-pillars">Pillars (JSON array, legacy)</Label>
 							<Textarea
 								id="pp-pillars"
 								rows={10}
@@ -532,11 +565,12 @@ export default function DashboardSponsorsPage() {
 			</Card>
 
 			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-				<DialogContent className="sm:max-w-md">
+				<DialogContent className="max-h-[95vh] overflow-y-auto sm:max-w-5xl">
 					<DialogHeader>
 						<DialogTitle>{editingId == null ? "Add sponsor" : "Edit sponsor"}</DialogTitle>
 						<DialogDescription>
-							Changes are saved via the dashboard API and appear on the public site when active.
+							Build sponsor content with blocks (columns, promo codes, colors). Featured sponsors
+							show in the large card on /sponsors and the homepage.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="grid gap-4 py-2">
@@ -576,14 +610,25 @@ export default function DashboardSponsorsPage() {
 							/>
 						</div>
 						<div className="grid gap-2">
-							<Label htmlFor="sp-desc">Description</Label>
+							<Label htmlFor="sp-desc">Short plain description (optional legacy)</Label>
 							<Textarea
 								id="sp-desc"
-								rows={3}
+								rows={2}
 								value={form.description}
 								onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+								placeholder="Optional fallback if body blocks are empty"
 							/>
 						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="sp-cta">Visit button label</Label>
+							<Input
+								id="sp-cta"
+								value={form.cta_label}
+								onChange={(e) => setForm((f) => ({ ...f, cta_label: e.target.value }))}
+								placeholder='e.g. "Visit Great Life Pharma"'
+							/>
+						</div>
+						<BlogBodyEditor blocks={bodyBlocks} onChange={setBodyBlocks} />
 						<div className="grid gap-2">
 							<Label htmlFor="sp-order">Sort order</Label>
 							<Input
@@ -594,6 +639,14 @@ export default function DashboardSponsorsPage() {
 									setForm((f) => ({ ...f, sort_order: Number(e.target.value) || 0 }))
 								}
 							/>
+						</div>
+						<div className="flex items-center gap-2">
+							<Switch
+								id="sp-featured"
+								checked={form.is_featured}
+								onCheckedChange={(v) => setForm((f) => ({ ...f, is_featured: v }))}
+							/>
+							<Label htmlFor="sp-featured">Featured (large card on /sponsors and homepage)</Label>
 						</div>
 						<div className="flex items-center gap-2">
 							<Switch
