@@ -14,6 +14,21 @@ export function FeaturedSponsorCard({ sponsor, compact = false }: FeaturedSponso
   const ctaLabel = sponsor.cta_label?.trim() || `Visit ${sponsor.name}`;
   const intro = sponsorIntroText(sponsor.body, sponsor.description);
 
+  const visitButtonClass =
+    "inline-block bg-green-600 hover:bg-green-500 transition px-8 py-4 rounded-xl font-semibold shrink-0";
+
+  const visitLink =
+    sponsor.website_url ? (
+      <a
+        href={sponsor.website_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={visitButtonClass}
+      >
+        {ctaLabel}
+      </a>
+    ) : null;
+
   if (compact) {
     return (
       <div className="bg-black/30 backdrop-blur-md p-8 rounded-2xl border border-green-500/30">
@@ -46,22 +61,20 @@ export function FeaturedSponsorCard({ sponsor, compact = false }: FeaturedSponso
           </span>
         </div>
       ) : null}
-      <h2 className="text-3xl md:text-4xl font-bold text-green-400 mb-0">{sponsor.name}</h2>
+      <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <h2 className="text-3xl md:text-4xl font-bold text-green-400 mb-0 min-w-0 flex-1 text-left">
+          {sponsor.name}
+        </h2>
+        {visitLink ? (
+          <div className="hidden sm:block shrink-0">{visitLink}</div>
+        ) : null}
+      </div>
       {body ? (
         <div className="mt-4 w-full [&_.blog-article-body>p]:max-w-4xl [&_.blog-article-body>p]:text-lg [&_.blog-article-body>p]:leading-relaxed [&_.blog-article-body>p]:text-gray-300 [&_.blog-article-body>div]:w-full [&_.blog-article-body>div]:max-w-none">
           <BlogArticleBody body={body} tone="sponsor-featured" />
         </div>
       ) : null}
-      {sponsor.website_url ? (
-        <a
-          href={sponsor.website_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block mt-8 bg-green-600 hover:bg-green-500 transition px-8 py-4 rounded-xl font-semibold"
-        >
-          {ctaLabel}
-        </a>
-      ) : null}
+      {visitLink ? <div className="mt-8 flex justify-center">{visitLink}</div> : null}
     </div>
   );
 }

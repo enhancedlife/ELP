@@ -35,6 +35,12 @@ export type BlogLabeledItem = {
   text: string
 }
 
+export type BlogPromoItem = {
+  title: string
+  titleColor?: BlogAccentColor
+  detail: string
+}
+
 export type BlogBodyBlock =
   | { id: string; type: "paragraph"; text: string }
   | { id: string; type: "heading2"; text: string }
@@ -80,6 +86,12 @@ export type BlogBodyBlock =
       code: string
       description: string
       codeColor?: BlogAccentColor
+    }
+  | {
+      id: string
+      type: "promo_list"
+      boxLabel?: string
+      items: BlogPromoItem[]
     }
   | {
       id: string
@@ -150,6 +162,13 @@ export function createEmptyBlock(type: BlogBodyBlock["type"]): BlogBodyBlock {
         code: "",
         description: "",
         codeColor: "orange",
+      }
+    case "promo_list":
+      return {
+        id,
+        type,
+        boxLabel: "Exclusive Community Codes",
+        items: [{ title: "", titleColor: "orange", detail: "" }],
       }
     case "cta_link":
       return {
@@ -279,6 +298,30 @@ export function blogBlockToHtml(block: BlogBodyBlock): string {
         : ""
       return `<div class="mt-8 p-6 bg-black/50 rounded-xl border border-orange-500/30">${label}${code}${desc}</div>`
     }
+    case "promo_list": {
+      const items = block.items.filter((i) => i.title.trim() || i.detail.trim())
+      if (items.length === 0) return ""
+      const boxLabel = block.boxLabel?.trim()
+        ? `<p class="text-sm uppercase text-gray-500 mb-4">${escapeHtml(block.boxLabel)}</p>`
+        : ""
+      const rows = items
+        .map((item, index) => {
+          const title = item.title?.trim()
+            ? `<p class="text-3xl font-bold ${blogAccentTextClass(item.titleColor ?? "orange")}">${escapeHtml(item.title)}</p>`
+            : ""
+          const detail = item.detail?.trim()
+            ? `<p class="text-gray-400 mt-2 leading-relaxed">${escapeHtml(item.detail).replace(/\n/g, "<br />")}</p>`
+            : ""
+          if (!title && !detail) return ""
+          const divider =
+            index > 0 ? `border-t border-white/10 pt-6 mt-6` : ""
+          return `<div class="sponsor-promo-item ${divider}">${title}${detail}</div>`
+        })
+        .filter(Boolean)
+        .join("")
+      if (!rows) return ""
+      return `<div class="sponsor-promo-list mt-8 p-6 bg-black/50 rounded-xl border border-orange-500/30">${boxLabel}${rows}</div>`
+    }
     case "cta_link": {
       if (!block.label.trim() || !block.href.trim()) return ""
       const cls =
@@ -359,7 +402,8 @@ export const BLOG_BLOCK_LABELS: Record<BlogBodyBlock["type"], string> = {
   box: "Single column box",
   two_column: "Two column boxes",
   three_column: "Three column boxes",
-  promo_code: "Promo / discount code",
+  promo_code: "Promo / discount code (single)",
+  promo_list: "Coupons & discounts box",
   cta_link: "Call-to-action button",
   disclaimer: "Disclaimer box",
   raw_html: "Raw HTML (legacy)",

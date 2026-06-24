@@ -40,28 +40,26 @@ GREAT_LIFE_BODY = {
             ],
         },
         {
-            "id": "gl_promo_freetest",
-            "type": "promo_code",
-            "label": "Exclusive Community Code",
-            "code": "FREETEST",
-            "description": "Orders over $450 receive 2 free Testosterone Cypionate 250mg/ml",
-            "codeColor": "orange",
-        },
-        {
-            "id": "gl_promo_savings10",
-            "type": "promo_code",
-            "label": "Exclusive Community Code",
-            "code": "GLSAVINGS10",
-            "description": "Orders over $250 get 10% off",
-            "codeColor": "orange",
-        },
-        {
-            "id": "gl_promo",
-            "type": "promo_code",
-            "label": "Exclusive Community Code",
-            "code": "GREATLIFE50",
-            "description": "Save $50 on your order (one-time use per customer)",
-            "codeColor": "orange",
+            "id": "gl_promo_list",
+            "type": "promo_list",
+            "boxLabel": "Exclusive Community Codes",
+            "items": [
+                {
+                    "title": "FREETEST",
+                    "titleColor": "orange",
+                    "detail": "Orders over $450 receive 2 free Testosterone Cypionate 250mg/ml",
+                },
+                {
+                    "title": "GLSAVINGS10",
+                    "titleColor": "orange",
+                    "detail": "Orders over $250 get 10% off",
+                },
+                {
+                    "title": "GREATLIFE50",
+                    "titleColor": "orange",
+                    "detail": "Save $50 on your order (one-time use per customer)",
+                },
+            ],
         },
     ],
 }

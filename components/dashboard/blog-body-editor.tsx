@@ -23,6 +23,7 @@ import {
   type BlogAccentColor,
   type BlogBodyBlock,
   type BlogLabeledItem,
+  type BlogPromoItem,
 } from "@/lib/blog-body-blocks"
 
 type BlogBodyEditorProps = {
@@ -107,6 +108,105 @@ function LabeledItemRows({
         onClick={() => onChange([...items, { label: "", text: "" }])}
       >
         Add row
+      </Button>
+    </div>
+  )
+}
+
+function moveItem<T>(items: T[], index: number, dir: -1 | 1): T[] {
+  const next = [...items]
+  const target = index + dir
+  if (target < 0 || target >= next.length) return items
+  ;[next[index], next[target]] = [next[target], next[index]]
+  return next
+}
+
+function PromoItemRows({
+  items,
+  onChange,
+}: {
+  items: BlogPromoItem[]
+  onChange: (items: BlogPromoItem[]) => void
+}) {
+  return (
+    <div className="space-y-4">
+      {items.map((item, i) => (
+        <div key={i} className="rounded-lg border bg-muted/10 p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Coupon {i + 1}</span>
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={i === 0}
+                onClick={() => onChange(moveItem(items, i, -1))}
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={i === items.length - 1}
+                onClick={() => onChange(moveItem(items, i, 1))}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-destructive"
+                disabled={items.length <= 1}
+                onClick={() => onChange(items.filter((_, j) => j !== i))}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <Input
+            value={item.title}
+            onChange={(e) => {
+              const next = [...items]
+              next[i] = { ...next[i], title: e.target.value }
+              onChange(next)
+            }}
+            placeholder="Coupon title or code (e.g. GREATLIFE50)"
+            className="font-mono"
+          />
+          <AccentColorSelect
+            label="Title / code color"
+            value={item.titleColor}
+            onChange={(titleColor) => {
+              const next = [...items]
+              next[i] = { ...next[i], titleColor }
+              onChange(next)
+            }}
+          />
+          <Textarea
+            rows={2}
+            value={item.detail}
+            onChange={(e) => {
+              const next = [...items]
+              next[i] = { ...next[i], detail: e.target.value }
+              onChange(next)
+            }}
+            placeholder="Discount details (shown in standard gray text)"
+          />
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() =>
+          onChange([...items, { title: "", titleColor: "orange", detail: "" }])
+        }
+      >
+        Add coupon
       </Button>
     </div>
   )
@@ -337,6 +437,27 @@ function BlockFields({
             value={block.description}
             onChange={(e) => onChange({ ...block, description: e.target.value })}
             placeholder="Short description under the code"
+          />
+        </div>
+      )
+    case "promo_list":
+      return (
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            <Label className="text-xs text-muted-foreground">Box heading (optional)</Label>
+            <Input
+              value={block.boxLabel ?? ""}
+              onChange={(e) => onChange({ ...block, boxLabel: e.target.value })}
+              placeholder="e.g. Exclusive Community Codes"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Add coupons in display order — each title/code can use its own color; details use
+            standard gray on the public page.
+          </p>
+          <PromoItemRows
+            items={block.items}
+            onChange={(items) => onChange({ ...block, items })}
           />
         </div>
       )
