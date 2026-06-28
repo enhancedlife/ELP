@@ -147,12 +147,17 @@ function extractClassName(el: string): string {
   return m?.[1] ?? ""
 }
 
-function accentFromClass(className: string): BlogAccentColor {
+function accentFromClass(className: string, defaultColor: BlogAccentColor = "green"): BlogAccentColor {
   if (className.includes("text-orange-400")) return "orange"
   if (className.includes("text-blue-400")) return "blue"
   if (className.includes("text-purple-400")) return "purple"
+  if (className.includes("text-green-400")) return "green"
   if (className.includes("text-white")) return "white"
-  return "green"
+  return defaultColor
+}
+
+function accentFromHeadingClass(className: string): BlogAccentColor {
+  return accentFromClass(className, "white")
 }
 
 function getInnerHtml(el: string, tag: string): string {
@@ -168,9 +173,10 @@ function extractListItems(el: string): BlogLabeledItem[] {
   let m: RegExpExecArray | null
   while ((m = liRe.exec(el)) !== null) {
     const inner = m[1]
-    const labelMatch = inner.match(
-      /<span[^>]*className=["'][^"']*font-medium[^"']*["'][^>]*>([\s\S]*?)<\/span>/i,
-    )
+    const labelMatch =
+      inner.match(
+        /<span[^>]*className=["'][^"']*font-medium[^"']*["'][^>]*>([\s\S]*?)<\/span>/i,
+      ) ?? inner.match(/<strong[^>]*>([\s\S]*?)<\/strong>/i)
     if (labelMatch) {
       const label = decodeJsxText(labelMatch[1]).replace(/:$/, "")
       const text = decodeJsxText(inner.replace(labelMatch[0], ""))
@@ -191,10 +197,13 @@ function parseListElement(el: string): BlogBodyBlock {
   const items = extractListItems(el)
   const hasLabels = items.some((i) => i.label?.trim())
   if (hasLabels) {
+    const strongClass = el.match(/<strong[^>]*className=["']([^"']+)["']/i)?.[1]
     return withId({
       ...createEmptyBlock("labeled_list"),
       items: items.length ? items : [{ text: "" }],
-      labelColor: accentFromClass(extractClassName(el)),
+      labelColor: strongClass
+        ? accentFromClass(strongClass, "white")
+        : accentFromClass(extractClassName(el)),
       inBox: false,
     })
   }
@@ -216,24 +225,90 @@ function parseDisclaimerDiv(el: string): BlogBodyBlock {
   })
 }
 
-function parseTwoColumnDiv(el: string): BlogBodyBlock {
+function parseColumnCard(colEl: string): {
+  title: string
+  titleColor: BlogAccentColor
+  body: string
+} {
+  const titleMatch = colEl.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i)
+  const bodyMatch = colEl.match(/<p[^>]*>([\s\S]*?)<\/p>/i)
+  const titleTag = titleMatch?.[0] ?? ""
+  return {
+    title: titleMatch ? decodeJsxText(titleMatch[1]) : "",
+    titleColor: titleTag
+      ? accentFromClass(extractClassName(titleTag))
+      : accentFromClass(extractClassName(colEl)),
+    body: bodyMatch ? decodeJsxText(bodyMatch[1]) : "",
+  }
+}
+
+function detectGridColumnCount(className: string, el: string): number | null {
+  const haystack = `${className} ${el}`
+  const three = /\b(?:md:)?grid-cols-3\b/.test(haystack)
+  const two = /\b(?:md:)?grid-cols-2\b/.test(haystack)
+  if (three) return 3
+  if (two) return 2
+  return null
+}
+
+function parseGridDiv(el: string, columnCount: number): BlogBodyBlock[] {
   const inner = getInnerHtml(el, "div")
   const colEls = parseTopLevelElements(inner).filter((c) => c.startsWith("<div"))
-  const parseCol = (colEl: string) => {
-    const titleMatch = colEl.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i)
-    const bodyMatch = colEl.match(/<p[^>]*>([\s\S]*?)<\/p>/i)
-    return {
-      title: titleMatch ? decodeJsxText(titleMatch[1]) : "",
-      titleColor: accentFromClass(extractClassName(colEl)),
-      body: bodyMatch ? decodeJsxText(bodyMatch[1]) : "",
+  const cards = colEls.map(parseColumnCard)
+
+  if (columnCount === 3) {
+    const blocks: BlogBodyBlock[] = []
+    for (let i = 0; i < cards.length; i += 3) {
+      const chunk = cards.slice(i, i + 3)
+      while (chunk.length < 3) {
+        chunk.push({ title: "", titleColor: "green", body: "" })
+      }
+      blocks.push(
+        withId({
+          ...createEmptyBlock("three_column"),
+          columns: chunk.slice(0, 3) as [
+            { title: string; titleColor?: BlogAccentColor; body: string },
+            { title: string; titleColor?: BlogAccentColor; body: string },
+            { title: string; titleColor?: BlogAccentColor; body: string },
+          ],
+        }),
+      )
     }
+    return blocks
   }
-  const a = parseCol(colEls[0] ?? "")
-  const b = parseCol(colEls[1] ?? "")
-  return withId({
-    ...createEmptyBlock("two_column"),
-    columns: [a, b],
-  })
+
+  const blocks: BlogBodyBlock[] = []
+  for (let i = 0; i < cards.length; i += 2) {
+    const a = cards[i] ?? { title: "", titleColor: "green" as const, body: "" }
+    const b = cards[i + 1] ?? { title: "", titleColor: "green" as const, body: "" }
+    blocks.push(
+      withId({
+        ...createEmptyBlock("two_column"),
+        columns: [a, b],
+      }),
+    )
+  }
+  return blocks
+}
+
+function isBoxDiv(el: string): boolean {
+  const cls = extractClassName(el)
+  return (
+    el.includes("bg-black/30") ||
+    el.includes("backdrop-blur") ||
+    cls.includes("bg-black/30") ||
+    cls.includes("backdrop-blur")
+  )
+}
+
+function parseStackedBoxesDiv(el: string): BlogBodyBlock[] | null {
+  const cls = extractClassName(el)
+  if (!/\bspace-y-\d+\b/.test(cls)) return null
+  const inner = getInnerHtml(el, "div")
+  const children = parseTopLevelElements(inner).filter((c) => c.startsWith("<div"))
+  if (children.length < 2) return null
+  if (!children.every(isBoxDiv)) return null
+  return children.map((child) => parseBoxDiv(child))
 }
 
 function parseBoxDiv(el: string): BlogBodyBlock {
@@ -251,7 +326,7 @@ function parseBoxDiv(el: string): BlogBodyBlock {
   })
 }
 
-function elementToBlock(el: string): BlogBodyBlock | null {
+function elementToBlocks(el: string): BlogBodyBlock | BlogBodyBlock[] | null {
   const tagMatch = el.match(/^<(\w+)/)
   if (!tagMatch) return null
   const tag = tagMatch[1].toLowerCase()
@@ -272,7 +347,7 @@ function elementToBlock(el: string): BlogBodyBlock | null {
     return withId({
       ...createEmptyBlock("heading3"),
       text,
-      color: accentFromClass(extractClassName(el)),
+      color: accentFromHeadingClass(extractClassName(el)),
     })
   }
   if (tag === "ul" || tag === "ol") {
@@ -280,13 +355,16 @@ function elementToBlock(el: string): BlogBodyBlock | null {
   }
   if (tag === "div") {
     const cls = extractClassName(el)
-    if (el.includes("grid-cols-2") || el.includes("md:grid-cols-2")) {
-      return parseTwoColumnDiv(el)
+    const gridCols = detectGridColumnCount(cls, el)
+    if (gridCols) {
+      return parseGridDiv(el, gridCols)
     }
+    const stacked = parseStackedBoxesDiv(el)
+    if (stacked?.length) return stacked
     if (el.includes("border-orange") || cls.includes("border-orange")) {
       return parseDisclaimerDiv(el)
     }
-    if (el.includes("bg-black/30") || el.includes("backdrop-blur")) {
+    if (isBoxDiv(el)) {
       return parseBoxDiv(el)
     }
     const text = decodeJsxText(getInnerHtml(el, "div"))
@@ -295,6 +373,13 @@ function elementToBlock(el: string): BlogBodyBlock | null {
     }
   }
   return withId({ ...createEmptyBlock("raw_html"), html: el })
+}
+
+function flattenBlocks(
+  result: BlogBodyBlock | BlogBodyBlock[] | null,
+): BlogBodyBlock[] {
+  if (!result) return []
+  return Array.isArray(result) ? result : [result]
 }
 
 function normalizeCategory(raw: string | null): string {
@@ -361,8 +446,7 @@ export function parseBlogTsx(source: string, filename?: string): ParsedBlogTsx {
   const elements = parseTopLevelElements(gate.body)
   const bodyBlocks: BlogBodyBlock[] = []
   for (const el of elements) {
-    const block = elementToBlock(el)
-    if (block) bodyBlocks.push(block)
+    bodyBlocks.push(...flattenBlocks(elementToBlocks(el)))
   }
 
   if (bodyBlocks.length === 0) {

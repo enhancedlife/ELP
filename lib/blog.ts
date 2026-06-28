@@ -8,5 +8,6 @@ export const BLOG_CATEGORIES = [
   "Recovery",
   "Bloodwork",
   "Supplements",
+  "Wellness",
   "General",
 ] as const
