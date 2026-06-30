@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from dashboard.url_utils import public_absolute_url
 
-from .image_utils import blog_post_card_image
+from .image_utils import blog_post_card_image, blog_post_card_image_path
 from .models import BlogPost
 
 
@@ -114,7 +114,7 @@ class BlogPostDashboardSerializer(serializers.ModelSerializer):
         }
 
     def get_thumbnail_url(self, obj: BlogPost) -> str | None:
-        if not obj.thumbnail:
+        if not obj.thumbnail or not obj.thumbnail.name:
             return None
         request = self.context.get("request")
         url = obj.thumbnail.url
@@ -123,4 +123,4 @@ class BlogPostDashboardSerializer(serializers.ModelSerializer):
         return url
 
     def get_card_image_url(self, obj: BlogPost) -> str:
-        return blog_post_card_image(obj, self.context.get("request"))
+        return blog_post_card_image_path(obj)

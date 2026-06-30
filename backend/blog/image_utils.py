@@ -9,8 +9,6 @@ from pathlib import Path
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
-from dashboard.url_utils import public_absolute_url
-
 ALLOWED_THUMBNAIL_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024  # 5 MB
 
@@ -27,21 +25,35 @@ def validate_thumbnail_upload(uploaded_file) -> None:
         raise ValidationError("Image must be 5 MB or smaller.")
 
 
-def blog_post_card_image(post, request=None) -> str:
-    """Uploaded thumbnail wins; otherwise the manual image_url field."""
-    if getattr(post, "thumbnail", None):
+def _to_site_relative_path(url: str) -> str:
+    url = (url or "").strip()
+    if not url:
+        return "/images/article-default.jpg"
+    if url.startswith(("http://", "https://")):
+        from urllib.parse import urlparse
+
+        path = urlparse(url).path
+        return path or url
+    if not url.startswith("/"):
+        return f"/{url}"
+    return url
+
+
+def blog_post_card_image_path(post) -> str:
+    """Site-relative card image (/media/… or /images/…) for public pages."""
+    if getattr(post, "thumbnail", None) and post.thumbnail.name:
         try:
-            if post.thumbnail:
-                url = post.thumbnail.url
-                if url.startswith("/"):
-                    return public_absolute_url(request, url)
-                return url
+            return _to_site_relative_path(post.thumbnail.url)
         except (ValueError, OSError):
             pass
-    manual = (post.image_url or "").strip() or "/images/article-default.jpg"
-    if manual.startswith("/"):
-        return public_absolute_url(request, manual)
-    return manual
+    return _to_site_relative_path(
+        (post.image_url or "").strip() or "/images/article-default.jpg",
+    )
+
+
+def blog_post_card_image(post, request=None) -> str:
+    """Effective public card image — always site-relative for SSR and browser."""
+    return blog_post_card_image_path(post)
 
 
 def public_images_root() -> Path | None:

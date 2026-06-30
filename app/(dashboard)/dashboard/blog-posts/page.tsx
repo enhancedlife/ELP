@@ -214,7 +214,7 @@ export default function DashboardBlogPostsPage() {
       excerpt: p.excerpt,
       category: p.category || "General",
       read_time_minutes: p.read_time_minutes ?? 5,
-      image_url: p.image_url || "/images/article-default.jpg",
+      image_url: p.card_image_url || p.image_url || "/images/article-default.jpg",
       body: p.body ?? "",
       published_at: toDatetimeLocalValue(p.published_at),
       is_featured: p.is_featured,
@@ -222,7 +222,7 @@ export default function DashboardBlogPostsPage() {
       is_public: p.is_public ?? false,
       sort_order: p.sort_order ?? 0,
     })
-    const thumb = p.thumbnail_url?.trim() || null
+    const thumb = p.thumbnail_url?.trim() || p.card_image_url?.trim() || null
     setHadUploadedThumbnail(Boolean(thumb))
     setThumbnailFile(null)
     if (thumbnailInputRef.current) thumbnailInputRef.current.value = ""

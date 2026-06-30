@@ -1,13 +1,9 @@
 import type { BlogArchiveResponse, BlogPostDetail, BlogPostSummary } from "@/lib/blog"
-import { backendUrl } from "@/lib/backend-public"
+import { resolveApiUrl } from "@/lib/backend-public"
 
 /** Next.js rewrites do not apply to RSC fetch — call Django directly on the server. */
 function resolveBlogApiUrl(path: string): string {
-  const normalized = path.startsWith("/") ? path : `/${path}`
-  if (typeof window === "undefined") {
-    return backendUrl(normalized)
-  }
-  return normalized
+  return resolveApiUrl(path.startsWith("/") ? path : `/${path}`)
 }
 
 async function safeFetchJson<T>(input: string): Promise<T | null> {

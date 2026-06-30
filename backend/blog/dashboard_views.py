@@ -9,6 +9,7 @@ from dashboard.permissions import DashboardAccess
 from dashboard.views import _truthy_query_param, require_full_admin
 
 from .image_utils import (
+    blog_post_card_image_path,
     mirror_blog_thumbnail_to_public_images,
     remove_public_image_mirror,
     validate_thumbnail_upload,
@@ -117,5 +118,7 @@ def blog_post_thumbnail(request, pk):
         post.thumbnail.delete(save=False)
     post.thumbnail = uploaded
     post.save(update_fields=["thumbnail"])
-    mirror_blog_thumbnail_to_public_images(post)
+    mirrored = mirror_blog_thumbnail_to_public_images(post)
+    post.image_url = mirrored or blog_post_card_image_path(post)
+    post.save(update_fields=["image_url"])
     return Response(_serialize_post(post, request))
