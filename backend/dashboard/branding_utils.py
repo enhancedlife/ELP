@@ -88,6 +88,9 @@ def prepare_favicon_file(uploaded_file):
         raise ValidationError(f"Could not process favicon image: {exc}") from exc
 
 
+from dashboard.url_utils import public_absolute_url
+
+
 def branding_file_url(field, request=None) -> str:
     if not field:
         return ""
@@ -95,6 +98,6 @@ def branding_file_url(field, request=None) -> str:
         url = field.url
     except (ValueError, OSError):
         return ""
-    if request and url.startswith("/"):
-        return request.build_absolute_uri(url)
+    if url.startswith("/"):
+        return public_absolute_url(request, url)
     return url

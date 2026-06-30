@@ -629,6 +629,11 @@ export default function DashboardBlogPostsPage() {
               {imageMode === "url" ? (
                 <div className="grid gap-2">
                   <Label htmlFor="image_url">Image URL or path</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Put files in <code className="rounded bg-muted px-1">public/images/</code> on
+                    the server (e.g. <code className="rounded bg-muted px-1">/images/article-foo.jpg</code>
+                    ). No rebuild needed when using Docker bind mounts.
+                  </p>
                   <Input
                     id="image_url"
                     value={form.image_url}
@@ -687,7 +692,12 @@ export default function DashboardBlogPostsPage() {
                       </Button>
                     ) : null}
                   </div>
-                  <p className="text-xs text-muted-foreground">JPEG, PNG, WebP, or GIF — max 5 MB.</p>
+                  <p className="text-xs text-muted-foreground">
+                    JPEG, PNG, WebP, or GIF — max 5 MB. Saved to{" "}
+                    <code className="rounded bg-muted px-1">data/media/</code> (live at{" "}
+                    <code className="rounded bg-muted px-1">/media/…</code>) and mirrored to{" "}
+                    <code className="rounded bg-muted px-1">public/images/blog/</code> on the server.
+                  </p>
                   {thumbnailPreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

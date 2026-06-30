@@ -16,6 +16,15 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Docker-persisted uploads (keep directory via .gitkeep)
+/data/media/*
+!/data/media/.gitkeep
+/public/images/*
+!/public/images/.gitkeep
+!/public/images/blog/
+/public/images/blog/*
+!/public/images/blog/.gitkeep
+
 # env files
 .env*
 

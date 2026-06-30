@@ -8,7 +8,11 @@ from rest_framework.response import Response
 from dashboard.permissions import DashboardAccess
 from dashboard.views import _truthy_query_param, require_full_admin
 
-from .image_utils import validate_thumbnail_upload
+from .image_utils import (
+    mirror_blog_thumbnail_to_public_images,
+    remove_public_image_mirror,
+    validate_thumbnail_upload,
+)
 from .models import BlogPost
 from .serializers import BlogPostDashboardSerializer
 
@@ -75,6 +79,7 @@ def blog_post_detail(request, pk):
     if request.method == "DELETE":
         if post.thumbnail:
             post.thumbnail.delete(save=False)
+        remove_public_image_mirror(post)
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -94,6 +99,7 @@ def blog_post_thumbnail(request, pk):
             post.thumbnail.delete(save=True)
         else:
             post.save()
+        remove_public_image_mirror(post)
         return Response(_serialize_post(post, request))
 
     uploaded = request.FILES.get("thumbnail") or request.FILES.get("file")
@@ -111,4 +117,5 @@ def blog_post_thumbnail(request, pk):
         post.thumbnail.delete(save=False)
     post.thumbnail = uploaded
     post.save(update_fields=["thumbnail"])
+    mirror_blog_thumbnail_to_public_images(post)
     return Response(_serialize_post(post, request))

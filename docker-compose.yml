@@ -5,7 +5,12 @@
 #   sudo certbot certonly --webroot -w /var/www/certbot \
 #     -d yourenhancedlife.com -d www.yourenhancedlife.com
 #
-# Copy .env.deploy.example → .env before: docker compose up -d --build
+# Persist uploads and static images on the host (survives container rebuilds / easy backup):
+#   ./data/media/          → Django uploads served at /media/
+#   ./public/images/       → static paths like /images/article-foo.jpg
+#
+# Migrating from the old named volume (yel_media_data):
+#   docker run --rm -v yel_media_data:/from -v "$(pwd)/data/media:/to" alpine cp -a /from/. /to/
 
 services:
   db:
@@ -36,8 +41,11 @@ services:
       DJANGO_DEBUG: "0"
       DB_HOST: db
       DB_PORT: "3306"
+      PUBLIC_SITE_BASE_URL: ${PUBLIC_SITE_URL:?set PUBLIC_SITE_URL in .env}
+      PUBLIC_IMAGES_ROOT: /app/public_images
     volumes:
-      - yel_media_data:/app/media
+      - ./data/media:/app/media
+      - ./public/images:/app/public_images
     depends_on:
       db:
         condition: service_healthy
@@ -63,6 +71,8 @@ services:
       API_REWRITE_TARGET: http://backend:8000
       DASHBOARD_SERVER_SECRET: ${DASHBOARD_SERVER_SECRET:?set DASHBOARD_SERVER_SECRET in .env}
       PUBLIC_SITE_BASE_URL: ${PUBLIC_SITE_URL:?set PUBLIC_SITE_URL in .env}
+    volumes:
+      - ./public/images:/app/public/images
     depends_on:
       backend:
         condition: service_healthy
@@ -79,6 +89,8 @@ services:
     volumes:
       - ./deploy/nginx.docker.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/maintenance:/var/maintenance:ro
+      - ./data/media:/var/www/yel-media:ro
+      - ./public/images:/var/www/yel-images:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
     depends_on:
@@ -95,4 +107,3 @@ services:
 
 volumes:
   yel_mysql_data:
-  yel_media_data:

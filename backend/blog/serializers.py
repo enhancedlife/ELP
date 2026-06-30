@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from dashboard.url_utils import public_absolute_url
+
 from .image_utils import blog_post_card_image
 from .models import BlogPost
 
@@ -116,8 +118,8 @@ class BlogPostDashboardSerializer(serializers.ModelSerializer):
             return None
         request = self.context.get("request")
         url = obj.thumbnail.url
-        if request and url.startswith("/"):
-            return request.build_absolute_uri(url)
+        if url.startswith("/"):
+            return public_absolute_url(request, url)
         return url
 
     def get_card_image_url(self, obj: BlogPost) -> str:

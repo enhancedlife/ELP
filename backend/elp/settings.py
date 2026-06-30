@@ -193,8 +193,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
 MEDIA_URL = "/media/"
+# Host path ./public/images mounted at /app/public_images in Docker — blog uploads mirror here.
+PUBLIC_IMAGES_ROOT = (os.environ.get("PUBLIC_IMAGES_ROOT") or "").strip()
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
