@@ -1,6 +1,10 @@
 "use client"
 
-import { blogBlocksToHtml, parseBlogBody } from "@/lib/blog-body-blocks"
+import {
+  blogBlocksToHtmlWithoutHero,
+  parseBlogBody,
+  stripLegacyHeroFromHtml,
+} from "@/lib/blog-body-blocks"
 import { cn } from "@/lib/utils"
 
 type BlogArticleBodyProps = {
@@ -22,7 +26,9 @@ const SPONSOR_FEATURED_TONE_CLASS =
 /** Renders blog post body — block JSON or legacy HTML — with ELP article styling */
 export function BlogArticleBody({ body, className, tone = "blog" }: BlogArticleBodyProps) {
   const blocks = parseBlogBody(body)
-  const html = blocks ? blogBlocksToHtml(blocks) : body?.trim() ?? ""
+  const html = blocks
+    ? blogBlocksToHtmlWithoutHero(blocks)
+    : stripLegacyHeroFromHtml(body?.trim() ?? "")
 
   if (!html) return null
 

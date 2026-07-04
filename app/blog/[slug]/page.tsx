@@ -3,7 +3,7 @@ import { getBlogPost } from "@/lib/api/blog"
 import { BlogPostView } from "@/components/blog-post-view"
 import { BlogPostDraftPreview } from "@/components/blog-post-draft-preview"
 
-/** Dynamic posts from the dashboard API (static `/blog/<slug>/` pages take precedence). */
+/** Blog articles served from the dashboard API (`/blog/[slug]`). */
 export default async function BlogPostBySlugPage({
   params,
   searchParams,

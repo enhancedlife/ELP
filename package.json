@@ -8,7 +8,8 @@
     "dev:backend:8001": "backend\\.venv\\Scripts\\python.exe backend\\manage.py runserver 127.0.0.1:8001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "import:legacy-blog": "tsx scripts/import-legacy-blog-posts.mts --write backend/blog/data/legacy_imports.json"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

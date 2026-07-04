@@ -101,6 +101,7 @@ export type BlogBodyBlock =
       variant?: "primary" | "outline"
     }
   | { id: string; type: "disclaimer"; title: string; text: string }
+  | { id: string; type: "hero_image"; src: string; alt?: string }
   | { id: string; type: "raw_html"; html: string }
 
 export type BlogBodyDocument = {
@@ -180,6 +181,8 @@ export function createEmptyBlock(type: BlogBodyBlock["type"]): BlogBodyBlock {
       }
     case "disclaimer":
       return { id, type, title: "Disclaimer", text: "" }
+    case "hero_image":
+      return { id, type, src: "", alt: "" }
     case "raw_html":
       return { id, type, html: "" }
   }
@@ -187,6 +190,35 @@ export function createEmptyBlock(type: BlogBodyBlock["type"]): BlogBodyBlock {
 
 export function defaultBlogBodyBlocks(): BlogBodyBlock[] {
   return [createEmptyBlock("paragraph")]
+}
+
+/** Remove auto-managed hero blocks (rendered from post card image on the article page). */
+export function stripHeroImageBlocks(blocks: BlogBodyBlock[]): BlogBodyBlock[] {
+  return blocks.filter((block) => {
+    if (block.type === "hero_image") return false
+    if (
+      block.type === "raw_html" &&
+      /aspect-\[2\/1\]/i.test(block.html) &&
+      /<img/i.test(block.html)
+    ) {
+      return false
+    }
+    return true
+  })
+}
+
+export function upsertHeroImageBlock(
+  blocks: BlogBodyBlock[],
+  src: string,
+  alt = "",
+): BlogBodyBlock[] {
+  const trimmed = src.trim()
+  const without = stripHeroImageBlocks(blocks)
+  if (!trimmed) return without
+  return [
+    { ...createEmptyBlock("hero_image"), src: trimmed, alt: alt.trim() },
+    ...without,
+  ]
 }
 
 function escapeHtml(value: string): string {
@@ -220,6 +252,16 @@ function renderLabeledList(
 
 export function blogBlockToHtml(block: BlogBodyBlock): string {
   switch (block.type) {
+    case "hero_image": {
+      const src = block.src?.trim()
+      if (!src) return ""
+      const alt = escapeHtml(block.alt?.trim() || "")
+      return (
+        `<div class="relative aspect-[2/1] rounded-2xl overflow-hidden mb-10 blog-hero-image">` +
+        `<img src="${escapeHtml(src)}" alt="${alt}" class="absolute inset-0 h-full w-full object-cover" loading="eager" />` +
+        `</div>`
+      )
+    }
     case "paragraph":
       if (!block.text.trim()) return ""
       return `<p class="text-gray-300 leading-relaxed text-justify">${escapeHtml(block.text).replace(/\n/g, "<br />")}</p>`
@@ -342,6 +384,20 @@ export function blogBlocksToHtml(blocks: BlogBodyBlock[]): string {
   return blocks.map(blogBlockToHtml).filter(Boolean).join("\n")
 }
 
+/** Public article view — hero is rendered from post.image; omit duplicate body blocks. */
+export function blogBlocksToHtmlWithoutHero(blocks: BlogBodyBlock[]): string {
+  return blogBlocksToHtml(stripHeroImageBlocks(blocks))
+}
+
+/** Remove legacy inline hero divs from raw HTML (TSX imports / old articles). */
+export function stripLegacyHeroFromHtml(html: string): string {
+  if (!html || !/aspect-\[2\/1\]/i.test(html)) return html
+  return html.replace(
+    /<div\b[^>]*aspect-\[2\/1\][^>]*>[\s\S]*?<\/div>/gi,
+    (match) => (/<img\b/i.test(match) ? "" : match),
+  )
+}
+
 export function parseBlogBody(raw: string | null | undefined): BlogBodyBlock[] | null {
   const trimmed = raw?.trim()
   if (!trimmed) return null
@@ -406,5 +462,6 @@ export const BLOG_BLOCK_LABELS: Record<BlogBodyBlock["type"], string> = {
   promo_list: "Coupons & discounts box",
   cta_link: "Call-to-action button",
   disclaimer: "Disclaimer box",
+  hero_image: "Hero image (uses card thumbnail)",
   raw_html: "Raw HTML (legacy)",
 }

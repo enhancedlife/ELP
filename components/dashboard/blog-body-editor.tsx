@@ -504,6 +504,18 @@ function BlockFields({
           />
         </div>
       )
+    case "hero_image":
+      return (
+        <div className="space-y-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">Hero image (card thumbnail)</p>
+          <p>Uses the uploaded card thumbnail on the live article. Path in body:</p>
+          <code className="block rounded bg-muted px-2 py-1 text-xs">{block.src || "—"}</code>
+          {block.src ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={block.src} alt="" className="mt-2 h-24 w-full max-w-xs rounded border object-cover" />
+          ) : null}
+        </div>
+      )
     case "raw_html":
       return (
         <Textarea
@@ -533,7 +545,7 @@ export function BlogBodyEditor({ blocks, onChange }: BlogBodyEditorProps) {
           </SelectTrigger>
           <SelectContent>
             {(Object.keys(BLOG_BLOCK_LABELS) as BlogBodyBlock["type"][])
-              .filter((t) => t !== "raw_html")
+              .filter((t) => t !== "raw_html" && t !== "hero_image")
               .map((type) => (
                 <SelectItem key={type} value={type}>
                   {BLOG_BLOCK_LABELS[type]}

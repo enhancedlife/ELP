@@ -54,6 +54,8 @@ export function BlogPostView({
       readTime={post.read_time}
       date={post.date}
       excerpt={post.excerpt}
+      heroImage={post.image}
+      heroImageAlt={post.title}
     >
       {post.body?.trim() ? (
         <BlogArticleBody body={post.body} />

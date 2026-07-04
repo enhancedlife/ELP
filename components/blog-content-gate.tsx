@@ -19,6 +19,9 @@ interface BlogContentGateProps {
   readTime: string
   date: string
   excerpt: string
+  /** Card/thumbnail image — shown as article hero (same as blog listing). */
+  heroImage?: string
+  heroImageAlt?: string
 }
 
 export function BlogContentGate({
@@ -31,6 +34,8 @@ export function BlogContentGate({
   readTime,
   date,
   excerpt,
+  heroImage,
+  heroImageAlt,
 }: BlogContentGateProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(!isPublic)
@@ -105,6 +110,16 @@ export function BlogContentGate({
 
           {isPublic || isAuthenticated ? (
             <div className="mt-12 prose prose-invert prose-lg max-w-none">
+              {heroImage?.trim() ? (
+                <div className="relative aspect-[2/1] rounded-2xl overflow-hidden mb-10 not-prose">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={heroImage}
+                    alt={heroImageAlt?.trim() || title}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                </div>
+              ) : null}
               {children}
             </div>
           ) : (

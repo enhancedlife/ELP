@@ -311,6 +311,24 @@ function parseStackedBoxesDiv(el: string): BlogBodyBlock[] | null {
   return children.map((child) => parseBoxDiv(child))
 }
 
+function isHeroImageDiv(el: string): boolean {
+  const cls = extractClassName(el)
+  const hasAspect = /aspect-\[2\/1\]/i.test(cls) || /aspect-\[2\/1\]/i.test(el)
+  return hasAspect && /<Image[\s\S]*?\/>/i.test(el)
+}
+
+function parseHeroImageDiv(el: string): BlogBodyBlock {
+  const srcMatch =
+    el.match(/<Image[^>]*\ssrc=["']([^"']+)["']/i) ??
+    el.match(/src=["']([^"']+)["']/i)
+  const altMatch = el.match(/alt=["']([^"']+)["']/i)
+  return withId({
+    ...createEmptyBlock("hero_image"),
+    src: srcMatch?.[1]?.trim() ?? "",
+    alt: altMatch?.[1] ? decodeJsxText(altMatch[1]) : "",
+  })
+}
+
 function parseBoxDiv(el: string): BlogBodyBlock {
   const titleMatch = el.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i)
   const introMatch = el.match(/<p[^>]*>([\s\S]*?)<\/p>/i)
@@ -355,6 +373,9 @@ function elementToBlocks(el: string): BlogBodyBlock | BlogBodyBlock[] | null {
   }
   if (tag === "div") {
     const cls = extractClassName(el)
+    if (isHeroImageDiv(el)) {
+      return parseHeroImageDiv(el)
+    }
     const gridCols = detectGridColumnCount(cls, el)
     if (gridCols) {
       return parseGridDiv(el, gridCols)
@@ -481,9 +502,12 @@ export function applyParsedBlogTsx(parsed: ParsedBlogTsx): {
     category: string
     read_time_minutes: number
     published_at: string
+    image_url: string
   }
   bodyBlocks: BlogBodyBlock[]
 } {
+  const hero = parsed.bodyBlocks.find((b) => b.type === "hero_image")
+  const heroSrc = hero?.type === "hero_image" ? hero.src.trim() : ""
   return {
     form: {
       slug: parsed.slug,
@@ -492,6 +516,7 @@ export function applyParsedBlogTsx(parsed: ParsedBlogTsx): {
       category: parsed.category,
       read_time_minutes: parsed.read_time_minutes,
       published_at: toDatetimeLocalValue(parsed.published_at),
+      image_url: heroSrc || "/images/article-default.jpg",
     },
     bodyBlocks: parsed.bodyBlocks,
   }
