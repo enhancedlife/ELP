@@ -18,6 +18,7 @@ from .smtp_helpers import smtp_failure_user_message
 from .smtp_profile_serializers import SmtpProfileSerializer
 from .smtp_profiles import (
     activate_smtp_profile,
+    get_connection_for_profile,
     get_outbound_connection,
     resolve_from_email,
     set_smtp_profile_enabled,

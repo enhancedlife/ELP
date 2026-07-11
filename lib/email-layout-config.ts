@@ -17,13 +17,13 @@ export type EmailLayoutConfig = {
 };
 
 export const DEFAULT_EMAIL_LAYOUT_CONFIG: EmailLayoutConfig = {
-	header_bg_color: "#0a0c0f",
+	header_bg_color: "#000000",
 	header_logo_url: "https://yourenhancedlife.com/logoYEL.png",
 	header_heading: "Your Enhanced Life",
 	header_heading_color: "#4ade80",
 	header_tagline: "Enhance. Optimize. Thrive.",
 	header_tagline_color: "#9ca3af",
-	footer_bg_color: "#0a0c0f",
+	footer_bg_color: "#000000",
 	footer_contact_email: "admin@yourenhancedlife.com",
 	footer_copyright: "© 2026 Your Enhanced Life. All rights reserved.",
 	footer_disclaimer: "Educational content only. Not medical advice.",

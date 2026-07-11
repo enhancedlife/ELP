@@ -38,11 +38,15 @@ def _inner_body_html(*, paragraphs: list[str], cta_href: str = "", cta_label: st
 
     if cta_href and cta_label:
         parts.append(
-            f'<p style="margin:28px 0;text-align:center;">'
-            f'<a href="{_esc(cta_href)}" '
+            f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
+            f'style="margin:28px auto;">'
+            f'<tr><td align="center" bgcolor="{accent}" style="background-color:{accent};'
+            f'border-radius:6px;">'
+            f'<a href="{_esc(cta_href)}" target="_blank" '
             f'style="display:inline-block;padding:12px 28px;background-color:{accent};'
-            f'color:#0a0c0f;text-decoration:none;font-weight:600;font-size:16px;'
-            f'border-radius:6px;">{_esc(cta_label)}</a></p>'
+            f'color:#000000;text-decoration:none;font-weight:600;font-size:16px;'
+            f'border-radius:6px;mso-padding-alt:0;">{_esc(cta_label)}</a>'
+            f"</td></tr></table>"
         )
         parts.append(
             f'<p style="margin:0 0 16px;color:{muted};font-size:14px;line-height:1.6;">'

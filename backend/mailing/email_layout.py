@@ -36,6 +36,30 @@ def render_email_layout(
     return tpl.replace(PLACEHOLDER_TITLE, safe_title).replace(PLACEHOLDER_BODY, body)
 
 
+def ensure_body_html_text_colors(body_html: str, cfg: dict[str, str] | None = None) -> str:
+    """Add readable text color to bare tags when clients ignore inherited td color."""
+    from .layout_config import normalize_layout_config
+
+    colors = normalize_layout_config(cfg)
+    text = colors["body_text_color"]
+    inner = (body_html or "").strip()
+    if not inner:
+        return inner
+    if 'style="' in inner.lower() and "color:" in inner.lower():
+        return inner
+    if inner.startswith("<p") and "color:" not in inner.lower():
+        return inner.replace(
+            "<p>",
+            f'<p style="margin:0 0 16px;color:{text};font-size:16px;line-height:1.7;">',
+            1,
+        ).replace(
+            "<p ",
+            f'<p style="margin:0 0 16px;color:{text};font-size:16px;line-height:1.7;" ',
+            1,
+        )
+    return inner
+
+
 def compose_broadcast_html(
     *,
     headline: str,
@@ -51,6 +75,11 @@ def compose_broadcast_html(
         inner = "<p></p>"
     if looks_like_full_html_document(inner):
         return inner
+    from .models import SystemEmailLayout
+
+    row = SystemEmailLayout.objects.order_by("pk").first()
+    cfg = row.layout_config if row and row.layout_config else None
+    inner = ensure_body_html_text_colors(inner, cfg)
     line = (headline or "").strip() or (subject or "").strip() or " "
     return render_email_layout(
         get_active_layout_html(),

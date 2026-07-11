@@ -46,6 +46,7 @@ import type {
 	DashboardUserRow,
 } from "@/lib/types/dashboard";
 import { EmailSectionNav } from "@/components/dashboard/email-section-nav";
+import { DEFAULT_EMAIL_LAYOUT_CONFIG } from "@/lib/email-layout-config";
 import {
 	formatEmailListForInput,
 	parseEmailListInput,
@@ -71,9 +72,15 @@ function escapeHtml(s: string): string {
 }
 
 function visualBodyToHtml(body: string): string {
+	const textColor = DEFAULT_EMAIL_LAYOUT_CONFIG.body_text_color;
 	const parts = body.split(/\n\n+/).filter((p) => p.trim().length > 0);
 	if (!parts.length) return "";
-	return parts.map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`).join("");
+	return parts
+		.map(
+			(p) =>
+				`<p style="margin:0 0 16px;color:${textColor};font-size:16px;line-height:1.7;">${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`,
+		)
+		.join("");
 }
 
 function plainFromHtml(html: string): string {
