@@ -118,6 +118,11 @@ if db_name:
             'PORT': (
                 os.environ.get("DB_PORT") or os.environ.get("MYSQL_PORT") or "3306"
             ).strip(),
+            # Emoji / 4-byte UTF-8 (e.g. 👉) require utf8mb4. Default utf8 truncates or 500s.
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
+            },
         }
     }
 else:

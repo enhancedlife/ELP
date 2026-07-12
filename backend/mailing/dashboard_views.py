@@ -2,6 +2,7 @@ import smtplib
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.db import DataError, OperationalError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
@@ -332,7 +333,19 @@ def email_broadcasts_collection(request):
         return Response({"broadcasts": EmailBroadcastSerializer(qs, many=True).data})
     serializer = EmailBroadcastSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    serializer.save()
+    try:
+        serializer.save()
+    except (DataError, OperationalError) as e:
+        return Response(
+            {
+                "detail": (
+                    "Could not save this message (database encoding). "
+                    "Remove special emoji if the problem continues, or ensure MySQL uses utf8mb4. "
+                    f"Technical: {e}"
+                )[:2000]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -350,7 +363,19 @@ def email_broadcast_detail(request, pk):
         )
     ser = EmailBroadcastSerializer(broadcast, data=request.data, partial=True)
     ser.is_valid(raise_exception=True)
-    ser.save()
+    try:
+        ser.save()
+    except (DataError, OperationalError) as e:
+        return Response(
+            {
+                "detail": (
+                    "Could not save this message (database encoding). "
+                    "Remove special emoji if the problem continues, or ensure MySQL uses utf8mb4. "
+                    f"Technical: {e}"
+                )[:2000]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     return Response(ser.data)
 
 
