@@ -11,6 +11,22 @@ from .default_layout import PLACEHOLDER_BODY, PLACEHOLDER_TITLE
 
 HEX_COLOR_RE = re.compile(r"^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$")
 
+# Header/footer always render as opaque pure black (logo PNG transparency sits on this).
+EMAIL_HEADER_FOOTER_BG = "#000000"
+
+NEAR_BLACK_HEADER_FOOTER = frozenset(
+    {
+        "#000000",
+        "#000",
+        "#0a0c0f",
+        "#0c0a0f",
+        "#030712",
+        "#111111",
+        "#111827",
+        "#1f2937",
+    }
+)
+
 DEFAULT_EMAIL_LAYOUT_CONFIG: dict[str, str] = {
     "header_bg_color": "#000000",
     "header_logo_url": "https://yourenhancedlife.com/logoYEL.png",
@@ -41,6 +57,9 @@ def normalize_layout_config(raw: dict[str, Any] | None) -> dict[str, str]:
         out[key] = str(val).strip()
     if not out["footer_bg_color"]:
         out["footer_bg_color"] = out["header_bg_color"]
+    # Stored config may drift; header/footer always render opaque pure black.
+    out["header_bg_color"] = EMAIL_HEADER_FOOTER_BG
+    out["footer_bg_color"] = EMAIL_HEADER_FOOTER_BG
     return out
 
 
@@ -85,7 +104,10 @@ def _esc(value: str) -> str:
 def _bg_attrs(color: str) -> str:
     """bgcolor + inline style — required for Outlook, Apple Mail, and many web clients."""
     c = _esc(color)
-    return f'bgcolor="{c}" style="background-color:{c};"'
+    return (
+        f'bgcolor="{c}" '
+        f'style="background-color:{c};background:{c};background-image:none;"'
+    )
 
 
 def _section_wrapper(
@@ -98,7 +120,7 @@ def _section_wrapper(
 ) -> str:
     """Nested tables so background fills reliably in Outlook and Gmail."""
     c = _esc(bg_color)
-    bg_style = f"background-color:{c};"
+    bg_style = f"background-color:{c};background:{c};background-image:none;"
     color_style = f"color:{text_color};" if text_color else ""
     cell_style = f"{bg_style}{color_style}padding:{padding};"
     return (
@@ -120,10 +142,27 @@ def build_template_from_config(config: dict[str, str] | None) -> str:
         alt_parts.append(tagline)
     logo_alt = _esc(" — ".join(alt_parts))
 
+    outer = _esc(cfg["outer_bg_color"])
+    header_bg = _esc(EMAIL_HEADER_FOOTER_BG)
+    body_bg = _esc(cfg["body_bg_color"])
+    footer_bg = _esc(EMAIL_HEADER_FOOTER_BG)
+    body_text = _esc(cfg["body_text_color"])
+    title_text = _esc(cfg["title_text_color"])
+    accent = _esc(cfg["header_heading_color"])
+    body_top_border = f"1px solid {body_bg}"
+    body_bottom_border = f"1px solid {body_bg}"
+    outer_bg = _bg_attrs(outer)
+
     if logo:
         header_block = (
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" '
+            f'bgcolor="{header_bg}" style="background-color:{header_bg};background:{header_bg};">'
+            f'<tr><td align="center" valign="middle" bgcolor="{header_bg}" '
+            f'style="background-color:{header_bg};background:{header_bg};padding:0;">'
             f'<img src="{_esc(logo)}" alt="{logo_alt}" width="520" '
-            f'style="max-width:100%;width:520px;height:auto;margin:0 auto;display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;" />'
+            f'style="max-width:100%;width:520px;height:auto;margin:0 auto;display:block;border:0;'
+            f'outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;background-color:{header_bg};" />'
+            f"</td></tr></table>"
         )
     else:
         tagline_block = ""
@@ -137,17 +176,6 @@ def build_template_from_config(config: dict[str, str] | None) -> str:
             f'font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">{heading}</h1>'
             f"{tagline_block}"
         )
-
-    outer = _esc(cfg["outer_bg_color"])
-    header_bg = _esc(cfg["header_bg_color"])
-    body_bg = _esc(cfg["body_bg_color"])
-    footer_bg = _esc(cfg["footer_bg_color"])
-    body_text = _esc(cfg["body_text_color"])
-    title_text = _esc(cfg["title_text_color"])
-    accent = _esc(cfg["header_heading_color"])
-    section_border = "1px solid #333333"
-    outer_bg = _bg_attrs(outer)
-    card_bg = _bg_attrs(body_bg)
 
     body_content = (
         f'<div class="email-body" style="color:{body_text};font-size:16px;line-height:1.7;">'
@@ -216,14 +244,14 @@ def build_template_from_config(config: dict[str, str] | None) -> str:
   <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" {outer_bg}>
     <tr>
       <td align="center" valign="top" {outer_bg} style="padding:32px 16px;">
-        <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" {card_bg} style="width:100%;max-width:600px;border-collapse:collapse;border:{section_border};">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:600px;border-collapse:collapse;">
           <tr>
-            <td valign="top" {_bg_attrs(header_bg)} style="border-bottom:{section_border};">
+            <td valign="top" {_bg_attrs(header_bg)}>
               {header_inner}
             </td>
           </tr>
           <tr>
-            <td valign="top" {_bg_attrs(body_bg)} style="color:{body_text};font-size:16px;line-height:1.7;border-bottom:{section_border};">
+            <td valign="top" {_bg_attrs(body_bg)} style="color:{body_text};font-size:16px;line-height:1.7;border-top:{body_top_border};border-bottom:{body_bottom_border};">
               {body_inner}
             </td>
           </tr>

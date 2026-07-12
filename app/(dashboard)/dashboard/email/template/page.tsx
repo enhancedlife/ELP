@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useDashboardAuth } from "@/components/providers/dashboard-auth-provider";
 import {
 	describeDashboardFetchFailure,
@@ -71,7 +70,6 @@ export default function EmailTemplatePage() {
 		DEFAULT_EMAIL_LAYOUT_CONFIG,
 	);
 	const [templateHtml, setTemplateHtml] = useState("");
-	const [footerMatchesHeader, setFooterMatchesHeader] = useState(true);
 	const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 	const [banner, setBanner] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -98,7 +96,6 @@ export default function EmailTemplatePage() {
 			const cfg = normalizeEmailLayoutConfig(res.data.layout_config);
 			setLayoutConfig(cfg);
 			setTemplateHtml(res.data.template_html);
-			setFooterMatchesHeader(cfg.footer_bg_color === cfg.header_bg_color);
 			setUpdatedAt(res.data.updated_at);
 		}
 		setLoading(false);
@@ -109,13 +106,7 @@ export default function EmailTemplatePage() {
 	}, [reload]);
 
 	function patchConfig(patch: Partial<EmailLayoutConfig>) {
-		setLayoutConfig((prev) => {
-			const next = { ...prev, ...patch };
-			if (footerMatchesHeader && "header_bg_color" in patch) {
-				next.footer_bg_color = patch.header_bg_color ?? next.header_bg_color;
-			}
-			return next;
-		});
+		setLayoutConfig((prev) => ({ ...prev, ...patch }));
 	}
 
 	const previewSrcDoc = useMemo(() => {
@@ -132,9 +123,8 @@ export default function EmailTemplatePage() {
 		if (readOnly) return;
 		const payload = normalizeEmailLayoutConfig({
 			...layoutConfig,
-			footer_bg_color: footerMatchesHeader
-				? layoutConfig.header_bg_color
-				: layoutConfig.footer_bg_color,
+			header_bg_color: "#000000",
+			footer_bg_color: "#000000",
 		});
 		setSaving(true);
 		const res = await patchDashboardEmailTemplate({ layout_config: payload });
@@ -225,11 +215,14 @@ export default function EmailTemplatePage() {
 								) : null}
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<ColorField
-									label="Header background"
-									value={layoutConfig.header_bg_color}
-									onChange={(v) => patchConfig({ header_bg_color: v })}
-								/>
+								<div className="grid gap-2">
+									<Label>Header background</Label>
+									<Input value="#000000" readOnly disabled className="font-mono text-sm" />
+									<p className="text-xs text-muted-foreground">
+										Fixed opaque pure black so the logo background blends seamlessly in all email
+										clients.
+									</p>
+								</div>
 								<div className="grid gap-2">
 									<Label htmlFor="logo-url">Header logo URL</Label>
 									<Input
@@ -284,25 +277,13 @@ export default function EmailTemplatePage() {
 								</p>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<label className="flex items-center gap-2 text-sm">
-									<Switch
-										checked={footerMatchesHeader}
-										onCheckedChange={(checked) => {
-											setFooterMatchesHeader(checked);
-											if (checked) {
-												patchConfig({ footer_bg_color: layoutConfig.header_bg_color });
-											}
-										}}
-									/>
-									Footer background matches header
-								</label>
-								{!footerMatchesHeader ? (
-									<ColorField
-										label="Footer background"
-										value={layoutConfig.footer_bg_color}
-										onChange={(v) => patchConfig({ footer_bg_color: v })}
-									/>
-								) : null}
+								<div className="grid gap-2">
+									<Label>Footer background</Label>
+									<Input value="#000000" readOnly disabled className="font-mono text-sm" />
+									<p className="text-xs text-muted-foreground">
+										Matches the header — opaque pure black with no transparency.
+									</p>
+								</div>
 								<div className="grid gap-2">
 									<Label htmlFor="f-copy">Copyright line</Label>
 									<Input

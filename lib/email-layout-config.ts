@@ -48,5 +48,7 @@ export function normalizeEmailLayoutConfig(
 	if (!out.footer_bg_color) {
 		out.footer_bg_color = out.header_bg_color;
 	}
+	out.header_bg_color = "#000000";
+	out.footer_bg_color = "#000000";
 	return out;
 }
