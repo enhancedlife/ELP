@@ -24,6 +24,7 @@ from .broadcast_engine import (
     resume_broadcast,
     stop_broadcast,
 )
+from .broadcast_worker import kick_broadcast_worker
 from .models import EmailBroadcast, NewsletterSubscriber, OutboundEmailLog, SystemEmailLayout
 from .serializers import (
     EmailBroadcastRecipientSerializer,
@@ -452,6 +453,7 @@ def email_broadcast_send(request, pk):
 
     if broadcast.status == EmailBroadcast.Status.SENDING:
         process_broadcast_chunk(broadcast)
+        kick_broadcast_worker()
 
     return _broadcast_response(broadcast)
 
@@ -467,6 +469,7 @@ def email_broadcast_process(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
     process_broadcast_chunk(broadcast)
+    kick_broadcast_worker()
     return _broadcast_response(broadcast)
 
 
@@ -494,6 +497,7 @@ def email_broadcast_resume(request, pk):
         )
     resume_broadcast(broadcast)
     process_broadcast_chunk(broadcast)
+    kick_broadcast_worker()
     return _broadcast_response(broadcast)
 
 

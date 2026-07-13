@@ -34,7 +34,6 @@ import {
 	patchDashboardEmailBroadcast,
 	postDashboardEmailBroadcast,
 	postDashboardEmailBroadcastPause,
-	postDashboardEmailBroadcastProcess,
 	postDashboardEmailBroadcastResume,
 	postDashboardEmailBroadcastSend,
 	postDashboardEmailBroadcastStop,
@@ -287,14 +286,10 @@ export default function BulkMailPage() {
 					const batch = await refreshBatch(id);
 					if (!batch) break;
 					if (batch.status !== "sending") break;
-					const proc = await postDashboardEmailBroadcastProcess(id);
-					if (proc.ok && proc.data) {
-						setActiveBatch(proc.data);
-						if (proc.data.status !== "sending") break;
-						await sleep(pollDelayMs(proc.data));
-						continue;
-					}
-					await sleep(600);
+					// Server background worker drives waves; this loop only refreshes UI progress.
+					await sleep(
+						batch.waiting_for_next_batch ? pollDelayMs(batch) : 2500,
+					);
 				}
 				await loadDrafts();
 				const finalBatch = await refreshBatch(id);
@@ -308,6 +303,10 @@ export default function BulkMailPage() {
 						toast.error("Batch failed", {
 							description: finalBatch.error_summary || undefined,
 						});
+					} else if (finalBatch.status === "paused") {
+						toast.message("Batch paused.");
+					} else if (finalBatch.status === "stopped") {
+						toast.message("Batch stopped.");
 					}
 				}
 			} finally {
@@ -641,7 +640,7 @@ export default function BulkMailPage() {
 
 		if (
 			!window.confirm(
-				`Send this message to ${recipientLabel}? The system will send ${batchEmailCount} email(s) every ${batchIntervalMinutes} minute(s) until done. You can pause or stop while sending.`,
+				`Send this message to ${recipientLabel}? The system will send ${batchEmailCount} email(s) every ${batchIntervalMinutes} minute(s) until done. Sending continues on the server if you close this window. You can pause or stop anytime.`,
 			)
 		) {
 			return;
@@ -687,6 +686,10 @@ export default function BulkMailPage() {
 		setDraftId(null);
 		await loadDrafts();
 		if (send.data.status === "sending") {
+			toast.message("Sending started on the server", {
+				description:
+					"You can close this window — progress continues in the background. Reopen Bulk mail anytime to check status.",
+			});
 			void runSendLoop(id);
 		} else {
 			setSending(false);
@@ -762,8 +765,9 @@ export default function BulkMailPage() {
 				<div>
 					<h2 className="text-3xl font-bold tracking-tight">Bulk mail</h2>
 					<p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-						Save drafts with your audience selection, send in batches with pause/resume/stop, and
-						track per-recipient status. Uses the shared{" "}
+						Save drafts, send in timed waves with pause/resume/stop, and track per-recipient
+						status. Sending continues on the server even if you close this window — reopen Bulk
+						mail later to check progress. Uses the shared{" "}
 						<Link href="/dashboard/email/template" className="text-primary underline-offset-4 hover:underline">
 							email template
 						</Link>
@@ -893,6 +897,12 @@ export default function BulkMailPage() {
 								</span>
 							) : null}
 						</p>
+						{activeBatch.status === "sending" ? (
+							<p className="text-xs text-muted-foreground rounded-md border border-dashed px-3 py-2">
+								Running on the server in the background. Closing this browser tab will not pause
+								or stop the send — use Pause / Stop here if you need to interrupt it.
+							</p>
+						) : null}
 						<div className="flex flex-wrap gap-2">
 							{activeBatch.status === "sending" ? (
 								<Button type="button" variant="outline" size="sm" onClick={() => void pauseBatch()}>
