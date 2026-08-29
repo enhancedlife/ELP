@@ -60,7 +60,7 @@ function Header({ branding }: { branding: SiteBranding }) {
           ))}
           <div className="flex items-center gap-4 ml-2 pl-4 border-l border-white/20">
             <a 
-              href="https://www.facebook.com/share/g/1CsYByUzEd/?mibextid=wwXIfr" 
+              href="https://www.facebook.com/share/g/1C5QGiULGv/" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-gray-300 hover:text-blue-400 transition"
@@ -118,7 +118,7 @@ function Footer({ branding }: { branding: SiteBranding }) {
 
         <div className="flex items-center gap-4">
           <a 
-            href="https://www.facebook.com/share/g/1CsYByUzEd/?mibextid=wwXIfr" 
+            href="https://www.facebook.com/share/g/1C5QGiULGv/" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-gray-400 hover:text-blue-400 transition"

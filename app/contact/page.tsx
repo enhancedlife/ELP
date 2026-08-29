@@ -195,7 +195,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold">Facebook Group</h3>
                     <a 
-                      href="https://www.facebook.com/share/g/1CsYByUzEd/?mibextid=wwXIfr" 
+                      href="https://www.facebook.com/share/g/1C5QGiULGv/" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-blue-400 hover:text-blue-300 mt-1 inline-block transition"

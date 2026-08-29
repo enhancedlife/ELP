@@ -16,7 +16,7 @@ import {
 const SOCIAL_LINKS = [
   {
     label: "Facebook",
-    href: "https://www.facebook.com/share/g/1CsYByUzEd/?mibextid=wwXIfr",
+    href: "https://www.facebook.com/share/g/1C5QGiULGv/",
     hoverClass: "hover:text-blue-400",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
