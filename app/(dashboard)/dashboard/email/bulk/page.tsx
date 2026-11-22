@@ -242,7 +242,9 @@ export default function BulkMailPage() {
 			return;
 		}
 		setUsersBanner(null);
-		setUsers(Array.isArray(data.users) ? data.users : []);
+		// Bulk / select-all only shows active accounts (inactive may be unverified / abuse).
+		const rows = Array.isArray(data.users) ? data.users : [];
+		setUsers(rows.filter((u) => u.status === "Active"));
 	}, []);
 
 	const loadRecipients = useCallback(async (batchId: number, tab: RecipientTab) => {
@@ -1099,7 +1101,7 @@ export default function BulkMailPage() {
 										disabled={formLocked}
 										onClick={selectAllFiltered}
 									>
-										Select all in list
+										Select all active in list
 									</Button>
 									<Button
 										type="button"
@@ -1114,11 +1116,11 @@ export default function BulkMailPage() {
 							</div>
 							<p className="text-xs text-muted-foreground">
 								{selectedIds.size} selected · showing {filteredUsers.length} of {users.length}{" "}
-								loaded
+								active users (inactive hidden)
 							</p>
 							<div className="max-h-64 overflow-y-auto rounded-md border">
 								{filteredUsers.length === 0 ? (
-									<p className="p-4 text-sm text-muted-foreground">No users match.</p>
+									<p className="p-4 text-sm text-muted-foreground">No active users match.</p>
 								) : (
 									<ul className="divide-y">
 										{filteredUsers.map((u) => (
@@ -1139,6 +1141,7 @@ export default function BulkMailPage() {
 													<span className="ml-2 font-mono text-xs text-muted-foreground">
 														{u.email}
 													</span>
+													<span className="ml-2 text-xs text-muted-foreground">Active</span>
 												</label>
 											</li>
 										))}
