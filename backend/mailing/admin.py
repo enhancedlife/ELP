@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import EmailBroadcast, NewsletterSubscriber, OutboundEmailLog
+from .models import ContactIpBlock, EmailBroadcast, NewsletterSubscriber, OutboundEmailLog, SecuritySetting
 
 
 @admin.register(NewsletterSubscriber)
@@ -64,3 +64,23 @@ class OutboundEmailLogAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(ContactIpBlock)
+class ContactIpBlockAdmin(admin.ModelAdmin):
+    list_display = (
+        "ip_address",
+        "rejected_count",
+        "blocked_at",
+        "block_expires_at",
+        "cloudflare_rule_id",
+        "updated_at",
+    )
+    search_fields = ("ip_address", "cloudflare_rule_id")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(SecuritySetting)
+class SecuritySettingAdmin(admin.ModelAdmin):
+    list_display = ("key", "label", "group")
+    search_fields = ("key", "label")

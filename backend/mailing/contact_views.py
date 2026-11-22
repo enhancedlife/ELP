@@ -11,8 +11,18 @@ from rest_framework.response import Response
 
 from sponsors.models import Sponsor
 
+from mailing.client_ip import client_ip
+from mailing.contact_blocks import (
+    block_message,
+    is_blocked,
+    note_rejection,
+    policy_minutes_or_none,
+    remaining_block_seconds,
+    row_ban_minutes,
+)
 from mailing.email_logging import record_outbound_email
-from mailing.models import OutboundEmailLog
+from mailing.guards import markup_error
+from mailing.models import ContactIpBlock, OutboundEmailLog
 from mailing.smtp_config import env_smtp_block_reason
 from mailing.smtp_helpers import smtp_failure_user_message
 from mailing.smtp_profiles import resolve_from_email, send_outbound_mail
@@ -72,13 +82,62 @@ def _sponsor_line_from_selection(sponsor_selection) -> str:
 def contact_submit(request):
     """
     Public contact form: sends a structured email to CONTACT_FORM_TO (or SERVER_EMAIL).
+    Rejects HTML/script markup; 3 strikes ban the client IP (optional Cloudflare).
     """
+    if is_blocked(request):
+        minutes = policy_minutes_or_none()
+        ip = client_ip(request)
+        row = (
+            ContactIpBlock.objects.filter(ip_address=ip, blocked_at__isnull=False).first()
+            if ip
+            else None
+        )
+        if row is not None:
+            minutes = row_ban_minutes(row)
+        seconds = remaining_block_seconds(request)
+        payload = {
+            "detail": block_message(minutes),
+            "blocked": True,
+            "blockMinutes": minutes,
+            "autoExpire": minutes is not None,
+        }
+        if seconds is not None:
+            payload["remainingSeconds"] = seconds
+        return Response(payload, status=status.HTTP_403_FORBIDDEN)
+
     name = (request.data.get("name") or "").strip()[:200]
     email = (request.data.get("email") or "").strip().lower()[:254]
     issue_type = (request.data.get("issue_type") or "").strip()
     sponsor_selection = request.data.get("sponsor_selection")
     related_username = (request.data.get("related_username") or "").strip()[:200]
     message = (request.data.get("message") or "").strip()
+
+    text_error = markup_error(
+        name,
+        email,
+        related_username,
+        message,
+        issue_type,
+        str(sponsor_selection or ""),
+    )
+    if text_error:
+        strike = note_rejection(request)
+        code = (
+            status.HTTP_403_FORBIDDEN
+            if strike.get("blocked")
+            else status.HTTP_400_BAD_REQUEST
+        )
+        return Response(
+            {
+                "detail": strike.get("message") or text_error,
+                "strikes": strike.get("strikes") or 0,
+                "blocked": bool(strike.get("blocked")),
+                "blockMinutes": strike.get("blockMinutes"),
+                "autoExpire": strike.get("autoExpire"),
+                "blockedUntil": strike.get("blockedUntil"),
+            },
+            status=code,
+        )
 
     if not email or not message:
         return Response(

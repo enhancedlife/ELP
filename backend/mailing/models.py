@@ -220,3 +220,37 @@ class OutboundEmailLog(models.Model):
             models.Index(fields=["-created_at", "source"]),
             models.Index(fields=["-created_at", "success"]),
         ]
+
+
+class SecuritySetting(models.Model):
+    """JSON key/value for contact ban policy and Cloudflare IP-block toggle."""
+
+    key = models.CharField(max_length=100, primary_key=True)
+    value = models.TextField(blank=True)
+    label = models.CharField(max_length=200, blank=True)
+    group = models.CharField(max_length=64, blank=True)
+
+    class Meta:
+        ordering = ["key"]
+
+    def __str__(self) -> str:
+        return self.key
+
+
+class ContactIpBlock(models.Model):
+    """Strike tracking + ban after repeated markup submissions on the contact form."""
+
+    ip_address = models.CharField(max_length=45, unique=True)
+    rejected_count = models.PositiveSmallIntegerField(default=0)
+    blocked_at = models.DateTimeField(null=True, blank=True)
+    # Null while blocked = permanent until manual remove; set = auto-expire time.
+    block_expires_at = models.DateTimeField(null=True, blank=True)
+    cloudflare_rule_id = models.CharField(max_length=64, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-blocked_at"]
+
+    def __str__(self) -> str:
+        return self.ip_address

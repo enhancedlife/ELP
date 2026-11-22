@@ -155,9 +155,20 @@ export type ContactFormPayload = {
   message: string;
 };
 
-export async function postContactForm(
-  body: ContactFormPayload,
-): Promise<{ ok: boolean; detail?: string; status: number; email_delivery?: 'console' | 'smtp' }> {
+export type ContactFormResult = {
+  ok: boolean;
+  detail?: string;
+  status: number;
+  email_delivery?: 'console' | 'smtp';
+  blocked?: boolean;
+  strikes?: number;
+  blockMinutes?: number | null;
+  autoExpire?: boolean;
+  blockedUntil?: string | null;
+  remainingSeconds?: number | null;
+};
+
+export async function postContactForm(body: ContactFormPayload): Promise<ContactFormResult> {
   try {
     const res = await fetch('/api/contact', {
       method: 'POST',
@@ -168,6 +179,12 @@ export async function postContactForm(
       detail?: string;
       ok?: boolean;
       email_delivery?: string;
+      blocked?: boolean;
+      strikes?: number;
+      blockMinutes?: number | null;
+      autoExpire?: boolean;
+      blockedUntil?: string | null;
+      remainingSeconds?: number | null;
     };
     const email_delivery =
       data.email_delivery === 'console' ? ('console' as const) : undefined;
@@ -175,6 +192,12 @@ export async function postContactForm(
       ok: res.ok,
       detail: typeof data.detail === 'string' ? data.detail : undefined,
       status: res.status,
+      blocked: Boolean(data.blocked),
+      strikes: typeof data.strikes === 'number' ? data.strikes : undefined,
+      blockMinutes: data.blockMinutes ?? null,
+      autoExpire: data.autoExpire,
+      blockedUntil: data.blockedUntil ?? null,
+      remainingSeconds: data.remainingSeconds ?? null,
       ...(email_delivery ? { email_delivery } : {}),
     };
   } catch {

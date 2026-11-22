@@ -1,6 +1,7 @@
 from django.urls import path
 
 from mailing import dashboard_views as mailing_dashboard_views
+from mailing import security_views as mailing_security_views
 from mailing import smtp_profile_views as mailing_smtp_profile_views
 
 from blog import dashboard_views as blog_dashboard_views
@@ -97,4 +98,8 @@ urlpatterns = [
         mailing_dashboard_views.newsletter_subscriber_detail,
     ),
     path("email/subscribers", mailing_dashboard_views.newsletter_subscribers_collection),
+    path("security/contact-ip-blocks/<int:pk>", mailing_security_views.contact_ip_block_delete_view),
+    path("security/contact-ip-blocks", mailing_security_views.contact_ip_blocks_view),
+    path("security/contact-ip-ban-settings", mailing_security_views.contact_ip_ban_settings_view),
+    path("security/cloudflare-ip-block", mailing_security_views.cloudflare_ip_block_setting_view),
 ]

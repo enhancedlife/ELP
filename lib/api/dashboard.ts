@@ -897,3 +897,60 @@ export function patchDashboardBlogComment(
 export function deleteDashboardBlogComment(id: number) {
 	return mutateDashboardJson<null>("DELETE", `blog-comments/${id}`);
 }
+
+export type ContactIpBanSettings = {
+	autoExpire: boolean;
+	minutes: number;
+};
+
+export type ContactIpBlockRow = {
+	id: number;
+	ip_address: string;
+	rejected_count: number;
+	blocked_at: string | null;
+	blocked_until?: string | null;
+	permanent?: boolean;
+	block_minutes?: number | null;
+};
+
+export type CloudflareIpBlockSetting = {
+	enabled: boolean;
+	credentials_ready: boolean;
+};
+
+export function getDashboardContactIpBlocks() {
+	return fetchDashboardJson<{
+		ok: boolean;
+		settings: ContactIpBanSettings;
+		data: ContactIpBlockRow[];
+	}>("security/contact-ip-blocks");
+}
+
+export function putDashboardContactIpBanSettings(body: ContactIpBanSettings) {
+	return mutateDashboardJson<{
+		ok: boolean;
+		detail?: string;
+		data: ContactIpBanSettings;
+	}>("PUT", "security/contact-ip-ban-settings", body);
+}
+
+export function deleteDashboardContactIpBlock(id: number) {
+	return mutateDashboardJson<{ ok: boolean; detail?: string }>(
+		"DELETE",
+		`security/contact-ip-blocks/${id}`,
+	);
+}
+
+export function getDashboardCloudflareIpBlock() {
+	return fetchDashboardJson<{ ok: boolean; data: CloudflareIpBlockSetting }>(
+		"security/cloudflare-ip-block",
+	);
+}
+
+export function putDashboardCloudflareIpBlock(enabled: boolean) {
+	return mutateDashboardJson<{
+		ok: boolean;
+		detail?: string;
+		data: CloudflareIpBlockSetting;
+	}>("PUT", "security/cloudflare-ip-block", { enabled });
+}

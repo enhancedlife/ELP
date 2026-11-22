@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { postContactForm } from "@/lib/api/website"
@@ -21,9 +21,11 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [formBlocked, setFormBlocked] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (formBlocked) return
     setSubmitting(true)
     setError(null)
 
@@ -37,6 +39,7 @@ export default function ContactPage() {
     setSubmitting(false)
 
     if (!result.ok) {
+      if (result.blocked) setFormBlocked(true)
       setError(result.detail ?? "Could not send message. Please try again.")
       return
     }
@@ -85,6 +88,12 @@ export default function ContactPage() {
               <form onSubmit={handleSubmit} className="bg-black/30 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
                 <h2 className="text-2xl font-bold mb-6">Send a Message</h2>
 
+                <p className="mb-6 text-sm text-gray-400">
+                  Plain text only — do not use HTML or script characters such as &lt; or &gt;.
+                  Apostrophes, ?, !, and quotes are fine. Three rejected attempts can temporarily
+                  block this network.
+                </p>
+
                 {error ? (
                   <div className="mb-6 bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
                     {error}
@@ -99,9 +108,10 @@ export default function ContactPage() {
                     <input
                       type="text"
                       required
+                      disabled={formBlocked || submitting}
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition"
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition disabled:opacity-50"
                       placeholder="John Doe"
                     />
                   </div>
@@ -113,9 +123,10 @@ export default function ContactPage() {
                     <input
                       type="email"
                       required
+                      disabled={formBlocked || submitting}
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition"
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition disabled:opacity-50"
                       placeholder="john@example.com"
                     />
                   </div>
@@ -125,9 +136,10 @@ export default function ContactPage() {
                       Subject
                     </label>
                     <select
+                      disabled={formBlocked || submitting}
                       value={formData.subject}
                       onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition"
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition disabled:opacity-50"
                     >
                       <option value="general">General Inquiry</option>
                       <option value="sponsorship">Sponsorship Opportunity</option>
@@ -144,19 +156,20 @@ export default function ContactPage() {
                     <textarea
                       required
                       rows={6}
+                      disabled={formBlocked || submitting}
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition resize-none"
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition resize-none disabled:opacity-50"
                       placeholder="How can we help you?"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || formBlocked}
                     className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-600/50 disabled:cursor-not-allowed transition px-6 py-4 rounded-xl font-semibold"
                   >
-                    {submitting ? "Sending..." : "Send Message"}
+                    {formBlocked ? "Form blocked" : submitting ? "Sending..." : "Send Message"}
                   </button>
                 </div>
               </form>

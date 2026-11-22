@@ -301,6 +301,9 @@ DEFAULT_FROM_EMAIL = (os.environ.get("DEFAULT_FROM_EMAIL") or "admin@yourenhance
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # Inbox for website contact form submissions (see mailing.contact_views).
 CONTACT_FORM_TO = (os.environ.get("CONTACT_FORM_TO") or "").strip()
+# Optional: push contact-form bans to Cloudflare account firewall (access rules).
+CLOUDFLARE_API_TOKEN = (os.environ.get("CLOUDFLARE_API_TOKEN") or "").strip()
+CLOUDFLARE_ACCOUNT_ID = (os.environ.get("CLOUDFLARE_ACCOUNT_ID") or "").strip()
 # Used in unsubscribe links in outbound mail (no trailing slash).
 PUBLIC_SITE_BASE_URL = (os.environ.get("PUBLIC_SITE_BASE_URL") or "http://127.0.0.1:3000").strip().rstrip("/")
 # Member password reset emails link to {PUBLIC_SITE_BASE_URL}/reset-password?uid=...&token=...
