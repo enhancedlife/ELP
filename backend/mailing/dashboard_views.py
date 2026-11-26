@@ -1,5 +1,6 @@
 import smtplib
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -39,6 +40,8 @@ from .serializers import (
 from .smtp_helpers import smtp_failure_user_message
 from .smtp_config import delivery_status_payload, outbound_smtp_block_reason
 from .smtp_profiles import prepare_outbound_message, resolve_from_email
+
+US_EASTERN = ZoneInfo("America/New_York")
 
 
 def _parse_audience_payload(
@@ -131,10 +134,15 @@ def _parse_scheduled_at(raw) -> tuple[datetime | None, Response | None]:
             status=status.HTTP_400_BAD_REQUEST,
         )
     if timezone.is_naive(parsed):
-        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        parsed = timezone.make_aware(parsed, US_EASTERN)
     if parsed <= timezone.now():
         return None, Response(
-            {"detail": "Start time must be in the future. Leave it blank to send now."},
+            {
+                "detail": (
+                    "Start time must be in the future (US Eastern). "
+                    "Leave it blank to send now."
+                )
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
     return parsed, None

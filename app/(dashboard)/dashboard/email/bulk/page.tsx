@@ -118,22 +118,86 @@ function formatCountdown(seconds: number): string {
 	return `${m}m ${String(r).padStart(2, "0")}s`;
 }
 
-function formatWhen(iso: string | null | undefined): string {
+const EASTERN_TIME_ZONE = "America/New_York";
+
+function easternParts(date: Date) {
+	const parts = new Intl.DateTimeFormat("en-US", {
+		timeZone: EASTERN_TIME_ZONE,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(date);
+	const pick = (type: Intl.DateTimeFormatPartTypes) => {
+		const value = parts.find((part) => part.type === type)?.value ?? "00";
+		return value === "24" ? "00" : value;
+	};
+	return {
+		year: pick("year"),
+		month: pick("month"),
+		day: pick("day"),
+		hour: pick("hour"),
+		minute: pick("minute"),
+		second: pick("second"),
+	};
+}
+
+function easternOffsetMs(instant: Date): number {
+	const parts = easternParts(instant);
+	const wallAsUtc = Date.UTC(
+		Number(parts.year),
+		Number(parts.month) - 1,
+		Number(parts.day),
+		Number(parts.hour),
+		Number(parts.minute),
+		Number(parts.second),
+	);
+	return wallAsUtc - instant.getTime();
+}
+
+function easternWallToUtcMs(value: string): number | null {
+	const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+	if (!match) return null;
+	const wallAsUtc = Date.UTC(
+		Number(match[1]),
+		Number(match[2]) - 1,
+		Number(match[3]),
+		Number(match[4]),
+		Number(match[5]),
+		0,
+	);
+	let instant = wallAsUtc - easternOffsetMs(new Date(wallAsUtc));
+	instant = wallAsUtc - easternOffsetMs(new Date(instant));
+	return instant;
+}
+
+function formatEastern(iso: string | null | undefined): string {
 	if (!iso) return "";
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return iso;
-	return date.toLocaleString();
+	return new Intl.DateTimeFormat("en-US", {
+		timeZone: EASTERN_TIME_ZONE,
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+		timeZoneName: "short",
+	}).format(date);
 }
 
-function localDateTimeToIso(value: string): string | null {
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return null;
-	return date.toISOString();
+function formatEasternInput(value: string): string {
+	const instant = easternWallToUtcMs(value);
+	if (instant == null) return value;
+	return formatEastern(new Date(instant).toISOString());
 }
 
-function minLocalDateTimeValue(now = new Date()): string {
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+function minEasternDateTimeValue(now = new Date()): string {
+	const parts = easternParts(now);
+	return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
 function statusLabel(status: DashboardEmailBroadcastStatus): string {
@@ -577,9 +641,9 @@ export default function BulkMailPage() {
 				toast.error("Choose a start date and time, or turn off Start later.");
 				return false;
 			}
-			const when = new Date(scheduledAtLocal);
-			if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) {
-				toast.error("Start time must be in the future.");
+			const when = easternWallToUtcMs(scheduledAtLocal);
+			if (when == null || when <= Date.now()) {
+				toast.error("Start time must be in the future (US Eastern).");
 				return false;
 			}
 		}
@@ -727,7 +791,7 @@ export default function BulkMailPage() {
 						? `${emails.length} manual email address(es)`
 						: `${selectedIds.size} selected user(s)${emails.length ? ` plus ${emails.length} manual email(s)` : ""}`;
 
-		const startLabel = startLater ? formatWhen(localDateTimeToIso(scheduledAtLocal)) : "";
+		const startLabel = startLater ? formatEasternInput(scheduledAtLocal) : "";
 		if (
 			!window.confirm(
 				startLater
@@ -762,7 +826,7 @@ export default function BulkMailPage() {
 			}
 		}
 
-		const scheduledAt = startLater ? localDateTimeToIso(scheduledAtLocal) : null;
+		const scheduledAt = startLater ? scheduledAtLocal.replace("T", " ") : null;
 		const send = await postDashboardEmailBroadcastSend(id, {
 			audience,
 			userIds: audience === "selected_site_users" ? Array.from(selectedIds) : undefined,
@@ -782,7 +846,7 @@ export default function BulkMailPage() {
 		if (send.data.status === "sending" || send.data.status === "scheduled") {
 			if (send.data.status === "scheduled") {
 				toast.message("Send scheduled", {
-					description: `Starts ${formatWhen(send.data.scheduled_at)}. You can close this window — sending starts on the server at that time.`,
+					description: `Starts ${formatEastern(send.data.scheduled_at)}. You can close this window — sending starts at that US Eastern time.`,
 				});
 			} else {
 				toast.message("Sending started on the server", {
@@ -918,7 +982,7 @@ export default function BulkMailPage() {
 											<span className="text-xs text-muted-foreground">
 												{statusLabel(b.status)}
 												{b.status === "scheduled" && b.scheduled_at
-													? ` · starts ${formatWhen(b.scheduled_at)}`
+													? ` · starts ${formatEastern(b.scheduled_at)}`
 													: b.recipient_count > 0
 														? ` · ${b.sent_ok_count}/${b.recipient_count} sent`
 														: ""}
@@ -1007,7 +1071,7 @@ export default function BulkMailPage() {
 							{activeBatch.status === "scheduled" && activeBatch.scheduled_at ? (
 								<span className="text-foreground">
 									{" "}
-									· Starts {formatWhen(activeBatch.scheduled_at)}
+									· Starts {formatEastern(activeBatch.scheduled_at)}
 									{scheduledCountdown ? ` (in ${scheduledCountdown})` : ""}
 								</span>
 							) : null}
@@ -1020,7 +1084,7 @@ export default function BulkMailPage() {
 						</p>
 						{activeBatch.status === "scheduled" ? (
 							<p className="text-xs text-muted-foreground rounded-md border border-dashed px-3 py-2">
-								Nothing is sent before {formatWhen(activeBatch.scheduled_at)}. After that, waves
+								Nothing is sent before {formatEastern(activeBatch.scheduled_at)}. After that, waves
 								continue on the server even if this window is closed. Cancel the schedule if you do
 								not want it to start.
 							</p>
@@ -1201,18 +1265,19 @@ export default function BulkMailPage() {
 						</div>
 						{startLater ? (
 							<div className="grid gap-2">
-								<Label htmlFor="bulk-scheduled-at">Start time</Label>
+								<Label htmlFor="bulk-scheduled-at">Start time (US Eastern)</Label>
 								<Input
 									id="bulk-scheduled-at"
 									type="datetime-local"
 									disabled={formLocked}
-									min={minLocalDateTimeValue()}
+									min={minEasternDateTimeValue()}
 									value={scheduledAtLocal}
 									onChange={(e) => setScheduledAtLocal(e.target.value)}
 								/>
 								<p className="text-xs text-muted-foreground">
-									Uses your local time. Turn Start later off to send as soon as you click the
-									button.
+									Enter Eastern Standard Time, or Eastern Daylight Time when daylight saving is
+									in effect. The server clock is not used. Turn Start later off to send as soon
+									as you click the button.
 								</p>
 							</div>
 						) : null}
