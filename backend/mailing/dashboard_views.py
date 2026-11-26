@@ -1,9 +1,12 @@
 import smtplib
+from datetime import datetime
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import DataError, OperationalError
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -111,6 +114,30 @@ def _validate_recipient_selection(
             status=status.HTTP_400_BAD_REQUEST,
         )
     return None
+
+
+def _parse_scheduled_at(raw) -> tuple[datetime | None, Response | None]:
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None, None
+    if not isinstance(raw, str):
+        return None, Response(
+            {"detail": "Start time must be a date and time."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    parsed = parse_datetime(raw.strip().replace(" ", "T"))
+    if parsed is None:
+        return None, Response(
+            {"detail": "Start time is not a valid date."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    if parsed <= timezone.now():
+        return None, Response(
+            {"detail": "Start time must be in the future. Leave it blank to send now."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return parsed, None
 
 
 def _broadcast_response(broadcast: EmailBroadcast, *, http_status=status.HTTP_200_OK):
@@ -418,6 +445,14 @@ def email_broadcast_send(request, pk):
     if smtp_err is not None:
         return smtp_err
     audience, user_ids, manual_emails, err = _parse_audience_payload(request)
+    scheduled_at, schedule_err = _parse_scheduled_at(request.data.get("scheduled_at"))
+    if schedule_err is not None:
+        return schedule_err
+    if scheduled_at is not None and broadcast.status != EmailBroadcast.Status.DRAFT:
+        return Response(
+            {"detail": "A start time can only be set when starting a new send."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if broadcast.status == EmailBroadcast.Status.DRAFT:
         use_audience = audience or broadcast.audience or "newsletter"
@@ -435,6 +470,7 @@ def email_broadcast_send(request, pk):
             audience=use_audience,
             user_ids=use_ids,
             manual_emails=use_emails,
+            scheduled_at=scheduled_at,
         )
         if broadcast.status == EmailBroadcast.Status.FAILED:
             return _broadcast_response(broadcast)
@@ -445,6 +481,11 @@ def email_broadcast_send(request, pk):
         resume_broadcast(broadcast)
     elif broadcast.status == EmailBroadcast.Status.SENDING:
         pass
+    elif broadcast.status == EmailBroadcast.Status.SCHEDULED:
+        return Response(
+            {"detail": "This send is already scheduled. Cancel it before starting again."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     else:
         return Response(
             {"detail": "This broadcast cannot be sent or resumed."},
@@ -453,6 +494,8 @@ def email_broadcast_send(request, pk):
 
     if broadcast.status == EmailBroadcast.Status.SENDING:
         process_broadcast_chunk(broadcast)
+        kick_broadcast_worker()
+    elif broadcast.status == EmailBroadcast.Status.SCHEDULED:
         kick_broadcast_worker()
 
     return _broadcast_response(broadcast)

@@ -41,6 +41,7 @@ import {
 import type {
 	DashboardEmailBroadcast,
 	DashboardEmailBroadcastRecipient,
+	DashboardEmailBroadcastStatus,
 	DashboardEmailDeliveryStatus,
 	DashboardUserRow,
 } from "@/lib/types/dashboard";
@@ -117,10 +118,30 @@ function formatCountdown(seconds: number): string {
 	return `${m}m ${String(r).padStart(2, "0")}s`;
 }
 
-function statusLabel(status: string): string {
+function formatWhen(iso: string | null | undefined): string {
+	if (!iso) return "";
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return iso;
+	return date.toLocaleString();
+}
+
+function localDateTimeToIso(value: string): string | null {
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+	return date.toISOString();
+}
+
+function minLocalDateTimeValue(now = new Date()): string {
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+function statusLabel(status: DashboardEmailBroadcastStatus): string {
 	switch (status) {
 		case "draft":
 			return "Draft";
+		case "scheduled":
+			return "Scheduled";
 		case "sending":
 			return "Sending";
 		case "paused":
@@ -131,8 +152,10 @@ function statusLabel(status: string): string {
 			return "Sent";
 		case "failed":
 			return "Failed";
-		default:
-			return status;
+		default: {
+			const _exhaustive: never = status;
+			return _exhaustive;
+		}
 	}
 }
 
@@ -211,6 +234,8 @@ export default function BulkMailPage() {
 	const [batchIntervalMinutes, setBatchIntervalMinutes] = useState(
 		DEFAULT_BATCH_INTERVAL_MINUTES,
 	);
+	const [startLater, setStartLater] = useState(false);
+	const [scheduledAtLocal, setScheduledAtLocal] = useState("");
 	const [usersBanner, setUsersBanner] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [sending, setSending] = useState(false);
@@ -222,6 +247,7 @@ export default function BulkMailPage() {
 	const [recipientsTotal, setRecipientsTotal] = useState(0);
 	const [loadingRecipients, setLoadingRecipients] = useState(false);
 	const pollRef = useRef(false);
+	const watchGenRef = useRef(0);
 	const recipientFetchRef = useRef(0);
 	const [deliveryStatus, setDeliveryStatus] = useState<DashboardEmailDeliveryStatus | null>(
 		null,
@@ -269,10 +295,10 @@ export default function BulkMailPage() {
 		setRecipientsTotal(res.data.total);
 	}, []);
 
-	const refreshBatch = useCallback(async (id: number) => {
+	const refreshBatch = useCallback(async (id: number, apply = true) => {
 		const res = await getDashboardEmailBroadcast(id);
 		if (res.ok && res.data) {
-			setActiveBatch(res.data);
+			if (apply) setActiveBatch(res.data);
 			return res.data;
 		}
 		return null;
@@ -280,21 +306,48 @@ export default function BulkMailPage() {
 
 	const runSendLoop = useCallback(
 		async (id: number) => {
-			if (pollRef.current) return;
+			const gen = ++watchGenRef.current;
 			pollRef.current = true;
-			setSending(true);
+			const stillWatching = () => watchGenRef.current === gen;
+			const wait = async (ms: number) => {
+				const step = 500;
+				let left = ms;
+				while (left > 0) {
+					if (!stillWatching()) return false;
+					await sleep(Math.min(step, left));
+					left -= step;
+				}
+				return stillWatching();
+			};
 			try {
-				while (true) {
-					const batch = await refreshBatch(id);
+				while (stillWatching()) {
+					const batch = await refreshBatch(id, false);
+					if (!stillWatching()) break;
+					if (batch) setActiveBatch(batch);
 					if (!batch) break;
+					if (batch.status === "scheduled") {
+						setSending(false);
+						const dueIn = batch.scheduled_at
+							? new Date(batch.scheduled_at).getTime() - Date.now()
+							: 15_000;
+						const keep = await wait(Math.min(Math.max(dueIn + 750, 3_000), 30_000));
+						if (!keep) break;
+						continue;
+					}
 					if (batch.status !== "sending") break;
+					setSending(true);
 					// Server background worker drives waves; this loop only refreshes UI progress.
-					await sleep(
+					const keep = await wait(
 						batch.waiting_for_next_batch ? pollDelayMs(batch) : 2500,
 					);
+					if (!keep) break;
 				}
+				if (!stillWatching()) return;
 				await loadDrafts();
-				const finalBatch = await refreshBatch(id);
+				if (!stillWatching()) return;
+				const finalBatch = await refreshBatch(id, false);
+				if (!stillWatching()) return;
+				if (finalBatch) setActiveBatch(finalBatch);
 				if (finalBatch) {
 					void loadRecipients(id, recipientTab);
 					if (finalBatch.status === "sent") {
@@ -312,18 +365,27 @@ export default function BulkMailPage() {
 					}
 				}
 			} finally {
-				pollRef.current = false;
-				setSending(false);
+				if (stillWatching()) {
+					pollRef.current = false;
+					setSending(false);
+				}
 			}
 		},
 		[loadDrafts, loadRecipients, recipientTab, refreshBatch],
 	);
 
 	useEffect(() => {
-		if (!activeBatch?.waiting_for_next_batch || !activeBatch.next_batch_at) return;
+		const waiting = Boolean(activeBatch?.waiting_for_next_batch && activeBatch.next_batch_at);
+		const scheduled = activeBatch?.status === "scheduled" && Boolean(activeBatch.scheduled_at);
+		if (!waiting && !scheduled) return;
 		const id = window.setInterval(() => setCountdownTick((t) => t + 1), 1000);
 		return () => window.clearInterval(id);
-	}, [activeBatch?.waiting_for_next_batch, activeBatch?.next_batch_at]);
+	}, [
+		activeBatch?.waiting_for_next_batch,
+		activeBatch?.next_batch_at,
+		activeBatch?.status,
+		activeBatch?.scheduled_at,
+	]);
 
 	const nextBatchCountdown = useMemo(() => {
 		void countdownTick;
@@ -335,6 +397,13 @@ export default function BulkMailPage() {
 		activeBatch?.next_batch_at,
 		countdownTick,
 	]);
+
+	const scheduledCountdown = useMemo(() => {
+		void countdownTick;
+		if (activeBatch?.status !== "scheduled" || !activeBatch.scheduled_at) return null;
+		const seconds = (new Date(activeBatch.scheduled_at).getTime() - Date.now()) / 1000;
+		return formatCountdown(seconds);
+	}, [activeBatch?.status, activeBatch?.scheduled_at, countdownTick]);
 
 	useEffect(() => {
 		void loadUsers();
@@ -425,7 +494,9 @@ export default function BulkMailPage() {
 
 	const formLocked =
 		activeBatch != null &&
-		(activeBatch.status === "sending" || activeBatch.status === "paused");
+		(activeBatch.status === "sending" ||
+			activeBatch.status === "paused" ||
+			activeBatch.status === "scheduled");
 
 	function toggleEditorMode(next: EditorMode) {
 		if (formLocked) return;
@@ -501,6 +572,17 @@ export default function BulkMailPage() {
 			toast.error("Interval between waves cannot be negative.");
 			return false;
 		}
+		if (startLater) {
+			if (!scheduledAtLocal) {
+				toast.error("Choose a start date and time, or turn off Start later.");
+				return false;
+			}
+			const when = new Date(scheduledAtLocal);
+			if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) {
+				toast.error("Start time must be in the future.");
+				return false;
+			}
+		}
 		return true;
 	}
 
@@ -549,6 +631,9 @@ export default function BulkMailPage() {
 	}
 
 	function startNewDraft() {
+		watchGenRef.current += 1;
+		pollRef.current = false;
+		setSending(false);
 		setDraftId(null);
 		setActiveBatch(null);
 		setSubject("");
@@ -562,6 +647,8 @@ export default function BulkMailPage() {
 		setManualEmailsText("");
 		setBatchEmailCount(DEFAULT_BATCH_EMAIL_COUNT);
 		setBatchIntervalMinutes(DEFAULT_BATCH_INTERVAL_MINUTES);
+		setStartLater(false);
+		setScheduledAtLocal("");
 		setRecipients([]);
 		setRecipientsTotal(0);
 	}
@@ -594,7 +681,7 @@ export default function BulkMailPage() {
 		setDraftId(null);
 		setActiveBatch(b);
 		void loadRecipients(b.id, recipientTab);
-		if (b.status === "sending" && !pollRef.current) {
+		if ((b.status === "sending" || b.status === "scheduled") && !pollRef.current) {
 			void runSendLoop(b.id);
 		}
 	}
@@ -621,7 +708,7 @@ export default function BulkMailPage() {
 		});
 		if (b.status !== "draft") {
 			void loadRecipients(b.id, recipientTab);
-			if (b.status === "sending" && !pollRef.current) {
+			if ((b.status === "sending" || b.status === "scheduled") && !pollRef.current) {
 				void runSendLoop(b.id);
 			}
 		}
@@ -640,9 +727,12 @@ export default function BulkMailPage() {
 						? `${emails.length} manual email address(es)`
 						: `${selectedIds.size} selected user(s)${emails.length ? ` plus ${emails.length} manual email(s)` : ""}`;
 
+		const startLabel = startLater ? formatWhen(localDateTimeToIso(scheduledAtLocal)) : "";
 		if (
 			!window.confirm(
-				`Send this message to ${recipientLabel}? The system will send ${batchEmailCount} email(s) every ${batchIntervalMinutes} minute(s) until done. Sending continues on the server if you close this window. You can pause or stop anytime.`,
+				startLater
+					? `Schedule this message for ${recipientLabel} to start at ${startLabel}? Nothing is sent before then. After that, ${batchEmailCount} email(s) go out every ${batchIntervalMinutes} minute(s). You can cancel before it starts, and sending continues on the server if you close this window.`
+					: `Send this message to ${recipientLabel}? The system will send ${batchEmailCount} email(s) every ${batchIntervalMinutes} minute(s) until done. Sending continues on the server if you close this window. You can pause or stop anytime.`,
 			)
 		) {
 			return;
@@ -672,10 +762,12 @@ export default function BulkMailPage() {
 			}
 		}
 
+		const scheduledAt = startLater ? localDateTimeToIso(scheduledAtLocal) : null;
 		const send = await postDashboardEmailBroadcastSend(id, {
 			audience,
 			userIds: audience === "selected_site_users" ? Array.from(selectedIds) : undefined,
 			audienceEmails: emails.length ? emails : undefined,
+			scheduledAt: scheduledAt ?? undefined,
 		});
 		if (!send.ok || !send.data) {
 			setSending(false);
@@ -687,11 +779,17 @@ export default function BulkMailPage() {
 		setActiveBatch(send.data);
 		setDraftId(null);
 		await loadDrafts();
-		if (send.data.status === "sending") {
-			toast.message("Sending started on the server", {
-				description:
-					"You can close this window — progress continues in the background. Reopen Bulk mail anytime to check status.",
-			});
+		if (send.data.status === "sending" || send.data.status === "scheduled") {
+			if (send.data.status === "scheduled") {
+				toast.message("Send scheduled", {
+					description: `Starts ${formatWhen(send.data.scheduled_at)}. You can close this window — sending starts on the server at that time.`,
+				});
+			} else {
+				toast.message("Sending started on the server", {
+					description:
+						"You can close this window — progress continues in the background. Reopen Bulk mail anytime to check status.",
+				});
+			}
 			void runSendLoop(id);
 		} else {
 			setSending(false);
@@ -733,7 +831,17 @@ export default function BulkMailPage() {
 
 	async function stopBatch() {
 		if (!activeBatch?.id) return;
-		if (!window.confirm("Stop this batch? Remaining recipients will be skipped.")) return;
+		const cancelling = activeBatch.status === "scheduled";
+		if (
+			!window.confirm(
+				cancelling
+					? "Cancel this schedule? It has not started, so no emails will be sent."
+					: "Stop this batch? Remaining recipients will be skipped.",
+			)
+		) {
+			return;
+		}
+		watchGenRef.current += 1;
 		pollRef.current = false;
 		const res = await postDashboardEmailBroadcastStop(activeBatch.id);
 		if (res.ok && res.data) {
@@ -741,7 +849,7 @@ export default function BulkMailPage() {
 			setSending(false);
 			await loadDrafts();
 			void loadRecipients(res.data.id, recipientTab);
-			toast.message("Batch stopped.");
+			toast.message(cancelling ? "Schedule cancelled." : "Batch stopped.");
 		}
 	}
 
@@ -767,9 +875,9 @@ export default function BulkMailPage() {
 				<div>
 					<h2 className="text-3xl font-bold tracking-tight">Bulk mail</h2>
 					<p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-						Save drafts, send in timed waves with pause/resume/stop, and track per-recipient
-						status. Sending continues on the server even if you close this window — reopen Bulk
-						mail later to check progress. Uses the shared{" "}
+						Save drafts, send now or at a later time, then deliver in timed waves with
+						pause/resume/stop, and track per-recipient status. A scheduled send starts on the
+						server at the time you set, even if this window is closed. Uses the shared{" "}
 						<Link href="/dashboard/email/template" className="text-primary underline-offset-4 hover:underline">
 							email template
 						</Link>
@@ -809,12 +917,16 @@ export default function BulkMailPage() {
 											</span>
 											<span className="text-xs text-muted-foreground">
 												{statusLabel(b.status)}
-												{b.recipient_count > 0
-													? ` · ${b.sent_ok_count}/${b.recipient_count} sent`
-													: ""}
-												{b.created_at
-													? ` · ${new Date(b.created_at).toLocaleDateString()}`
-													: ""}
+												{b.status === "scheduled" && b.scheduled_at
+													? ` · starts ${formatWhen(b.scheduled_at)}`
+													: b.recipient_count > 0
+														? ` · ${b.sent_ok_count}/${b.recipient_count} sent`
+														: ""}
+												{b.status === "scheduled"
+													? ""
+													: b.created_at
+														? ` · ${new Date(b.created_at).toLocaleDateString()}`
+														: ""}
 											</span>
 										</button>
 										<div className="flex shrink-0 items-center gap-1">
@@ -892,6 +1004,13 @@ export default function BulkMailPage() {
 											: "s"
 									} between waves`
 								: " (no wait between waves)"}
+							{activeBatch.status === "scheduled" && activeBatch.scheduled_at ? (
+								<span className="text-foreground">
+									{" "}
+									· Starts {formatWhen(activeBatch.scheduled_at)}
+									{scheduledCountdown ? ` (in ${scheduledCountdown})` : ""}
+								</span>
+							) : null}
 							{activeBatch.status === "sending" && nextBatchCountdown ? (
 								<span className="text-foreground">
 									{" "}
@@ -899,6 +1018,13 @@ export default function BulkMailPage() {
 								</span>
 							) : null}
 						</p>
+						{activeBatch.status === "scheduled" ? (
+							<p className="text-xs text-muted-foreground rounded-md border border-dashed px-3 py-2">
+								Nothing is sent before {formatWhen(activeBatch.scheduled_at)}. After that, waves
+								continue on the server even if this window is closed. Cancel the schedule if you do
+								not want it to start.
+							</p>
+						) : null}
 						{activeBatch.status === "sending" ? (
 							<p className="text-xs text-muted-foreground rounded-md border border-dashed px-3 py-2">
 								Running on the server in the background. Closing this browser tab will not pause
@@ -918,10 +1044,12 @@ export default function BulkMailPage() {
 									Resume
 								</Button>
 							) : null}
-							{activeBatch.status === "sending" || activeBatch.status === "paused" ? (
+							{activeBatch.status === "sending" ||
+							activeBatch.status === "paused" ||
+							activeBatch.status === "scheduled" ? (
 								<Button type="button" variant="destructive" size="sm" onClick={() => void stopBatch()}>
 									<Square className="mr-1 h-4 w-4" />
-									Stop
+									{activeBatch.status === "scheduled" ? "Cancel schedule" : "Stop"}
 								</Button>
 							) : null}
 							<Button
@@ -1053,6 +1181,41 @@ export default function BulkMailPage() {
 								Wait time between waves. Use 0 to send waves back-to-back.
 							</p>
 						</div>
+					</div>
+
+					<div className="max-w-lg space-y-3 rounded-lg border p-4">
+						<div className="flex items-start justify-between gap-3">
+							<div>
+								<p className="text-sm font-medium">Start later</p>
+								<p className="text-xs text-muted-foreground">
+									Write the message now. Sending begins at the time you set, then continues in
+									waves.
+								</p>
+							</div>
+							<Switch
+								id="bulk-start-later"
+								checked={startLater}
+								disabled={formLocked}
+								onCheckedChange={setStartLater}
+							/>
+						</div>
+						{startLater ? (
+							<div className="grid gap-2">
+								<Label htmlFor="bulk-scheduled-at">Start time</Label>
+								<Input
+									id="bulk-scheduled-at"
+									type="datetime-local"
+									disabled={formLocked}
+									min={minLocalDateTimeValue()}
+									value={scheduledAtLocal}
+									onChange={(e) => setScheduledAtLocal(e.target.value)}
+								/>
+								<p className="text-xs text-muted-foreground">
+									Uses your local time. Turn Start later off to send as soon as you click the
+									button.
+								</p>
+							</div>
+						) : null}
 					</div>
 
 					{audience === "manual_emails" ? (
@@ -1317,7 +1480,7 @@ export default function BulkMailPage() {
 						</Button>
 						<Button
 							type="button"
-							disabled={saving || sending || formLocked}
+							disabled={saving || sending || formLocked || (startLater && !scheduledAtLocal)}
 							onClick={() => void sendBulk()}
 						>
 							{sending ? (
@@ -1325,7 +1488,13 @@ export default function BulkMailPage() {
 							) : (
 								<Send className="mr-2 h-4 w-4" />
 							)}
-							Send bulk mail
+							{sending
+								? startLater
+									? "Scheduling…"
+									: "Sending…"
+								: startLater
+									? "Schedule send"
+									: "Send bulk mail"}
 						</Button>
 						{draftId ? (
 							<p className="self-center text-xs text-muted-foreground">Draft #{draftId}</p>

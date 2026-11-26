@@ -284,6 +284,7 @@ export type DashboardSmtpProfilesResponse = {
 
 export type DashboardEmailBroadcastStatus =
 	| "draft"
+	| "scheduled"
 	| "sending"
 	| "paused"
 	| "stopped"
@@ -316,6 +317,7 @@ export type DashboardEmailBroadcast = {
 	progress_percent: number;
 	next_batch_at: string | null;
 	waiting_for_next_batch: boolean;
+	scheduled_at: string | null;
 	error_summary: string;
 	/** Present when send succeeded but some recipients failed (SMTP errors per address). */
 	send_warning?: string;

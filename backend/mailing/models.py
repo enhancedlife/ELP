@@ -52,6 +52,7 @@ class SystemEmailLayout(models.Model):
 class EmailBroadcast(models.Model):
     class Status(models.TextChoices):
         DRAFT = "draft", "Draft"
+        SCHEDULED = "scheduled", "Scheduled"
         SENDING = "sending", "Sending"
         PAUSED = "paused", "Paused"
         STOPPED = "stopped", "Stopped"
@@ -103,6 +104,11 @@ class EmailBroadcast(models.Model):
         null=True,
         blank=True,
         help_text="When the most recent wave finished; used to schedule the next wave.",
+    )
+    scheduled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When a delayed send should start. Empty means send as soon as it is started.",
     )
     error_summary = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)

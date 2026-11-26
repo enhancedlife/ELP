@@ -612,6 +612,7 @@ export function postDashboardEmailBroadcastSend(
 		audience?: "newsletter" | "all_site_users" | "selected_site_users" | "manual_emails";
 		userIds?: number[];
 		audienceEmails?: string[];
+		scheduledAt?: string;
 	} = {},
 ) {
 	const payload: Record<string, unknown> = {};
@@ -622,6 +623,7 @@ export function postDashboardEmailBroadcastSend(
 	if (options.audienceEmails?.length) {
 		payload.audience_emails = options.audienceEmails;
 	}
+	if (options.scheduledAt) payload.scheduled_at = options.scheduledAt;
 	return mutateDashboardJson<DashboardEmailBroadcast>(
 		"POST",
 		`email/broadcasts/${id}/send`,

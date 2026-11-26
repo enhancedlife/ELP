@@ -84,11 +84,17 @@ def _seconds_until_next_work() -> float:
                 "pending_count",
             )
         )
+        scheduled = list(
+            EmailBroadcast.objects.filter(
+                status=EmailBroadcast.Status.SCHEDULED,
+                scheduled_at__isnull=False,
+            ).only("id", "scheduled_at")
+        )
     except Exception:  # noqa: BLE001
-        logger.exception("broadcast worker: failed to query sending broadcasts")
+        logger.exception("broadcast worker: failed to query broadcasts")
         return float(_IDLE_POLL_SECONDS)
 
-    if not sending:
+    if not sending and not scheduled:
         return float(_IDLE_POLL_SECONDS)
 
     now = timezone.now()
@@ -102,14 +108,27 @@ def _seconds_until_next_work() -> float:
             return 0.5
         if soonest is None or wait < soonest:
             soonest = wait
-    return min(soonest or _IDLE_POLL_SECONDS, _MAX_SLEEP_SECONDS)
+    for broadcast in scheduled:
+        at = broadcast.scheduled_at
+        if at is None:
+            return 0.5
+        wait = (at - now).total_seconds()
+        if wait <= 0:
+            return 0.5
+        if soonest is None or wait < soonest:
+            soonest = wait
+    return min(soonest if soonest is not None else _IDLE_POLL_SECONDS, _MAX_SLEEP_SECONDS)
 
 
 def _process_all_sending() -> None:
-    from .broadcast_engine import process_broadcast_chunk
+    from .broadcast_engine import process_broadcast_chunk, start_due_scheduled_broadcasts
     from .models import EmailBroadcast
 
     close_old_connections()
+    try:
+        start_due_scheduled_broadcasts()
+    except Exception:  # noqa: BLE001
+        logger.exception("broadcast worker: failed to start scheduled broadcasts")
     ids = list(
         EmailBroadcast.objects.filter(status=EmailBroadcast.Status.SENDING)
         .order_by("id")
@@ -156,11 +175,14 @@ def recover_sending_broadcasts_on_startup() -> None:
 
             close_old_connections()
             count = EmailBroadcast.objects.filter(
-                status=EmailBroadcast.Status.SENDING
+                status__in=(
+                    EmailBroadcast.Status.SENDING,
+                    EmailBroadcast.Status.SCHEDULED,
+                )
             ).count()
             if count:
                 logger.info(
-                    "Found %s sending broadcast(s); starting background worker",
+                    "Found %s active broadcast(s); starting background worker",
                     count,
                 )
                 kick_broadcast_worker()

@@ -191,12 +191,31 @@ def _refresh_broadcast_counts(broadcast: EmailBroadcast) -> None:
     ).count()
 
 
+def start_due_scheduled_broadcasts() -> int:
+    """Move delayed sends to sending once their start time has passed."""
+    now = timezone.now()
+    due = EmailBroadcast.objects.filter(
+        status=EmailBroadcast.Status.SCHEDULED,
+        scheduled_at__isnull=False,
+        scheduled_at__lte=now,
+    )
+    started = 0
+    for broadcast in due:
+        broadcast.status = EmailBroadcast.Status.SENDING
+        broadcast.started_at = now
+        broadcast.last_batch_at = None
+        broadcast.save(update_fields=["status", "started_at", "last_batch_at"])
+        started += 1
+    return started
+
+
 def prepare_broadcast_recipients(
     broadcast: EmailBroadcast,
     *,
     audience: str,
     user_ids: list[int] | None = None,
     manual_emails: list[str] | None = None,
+    scheduled_at=None,
 ) -> EmailBroadcast:
     audience = _normalize_audience(audience)
     user_ids = user_ids if user_ids is not None else list(broadcast.audience_user_ids or [])
@@ -234,8 +253,15 @@ def prepare_broadcast_recipients(
         batch_size=500,
     )
     _refresh_broadcast_counts(broadcast)
-    broadcast.status = EmailBroadcast.Status.SENDING
-    broadcast.started_at = timezone.now()
+    delay_until = scheduled_at if scheduled_at is not None and scheduled_at > timezone.now() else None
+    if delay_until is not None:
+        broadcast.status = EmailBroadcast.Status.SCHEDULED
+        broadcast.scheduled_at = delay_until
+        broadcast.started_at = None
+    else:
+        broadcast.status = EmailBroadcast.Status.SENDING
+        broadcast.scheduled_at = None
+        broadcast.started_at = timezone.now()
     broadcast.completed_at = None
     broadcast.sent_at = None
     broadcast.last_batch_at = None
@@ -248,6 +274,7 @@ def prepare_broadcast_recipients(
             "pending_count",
             "skipped_count",
             "status",
+            "scheduled_at",
             "started_at",
             "completed_at",
             "sent_at",
@@ -411,26 +438,31 @@ def stop_broadcast(broadcast: EmailBroadcast) -> EmailBroadcast:
     if broadcast.status not in (
         EmailBroadcast.Status.SENDING,
         EmailBroadcast.Status.PAUSED,
+        EmailBroadcast.Status.SCHEDULED,
     ):
         return broadcast
+    was_scheduled = broadcast.status == EmailBroadcast.Status.SCHEDULED
     with transaction.atomic():
         broadcast.recipients.filter(
             status=EmailBroadcastRecipient.Status.PENDING
         ).update(status=EmailBroadcastRecipient.Status.SKIPPED)
         broadcast.status = EmailBroadcast.Status.STOPPED
         broadcast.completed_at = timezone.now()
+        if was_scheduled:
+            broadcast.error_summary = "Schedule cancelled. No emails were sent."
         _refresh_broadcast_counts(broadcast)
-        broadcast.save(
-            update_fields=[
-                "status",
-                "completed_at",
-                "recipient_count",
-                "sent_ok_count",
-                "sent_fail_count",
-                "pending_count",
-                "skipped_count",
-            ]
-        )
+        update_fields = [
+            "status",
+            "completed_at",
+            "recipient_count",
+            "sent_ok_count",
+            "sent_fail_count",
+            "pending_count",
+            "skipped_count",
+        ]
+        if was_scheduled:
+            update_fields.append("error_summary")
+        broadcast.save(update_fields=update_fields)
     return broadcast
 
 
